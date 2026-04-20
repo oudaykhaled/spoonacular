@@ -1,17 +1,18 @@
-/* Katty Coverage Dashboard — renders coverage.json (produced by the Gradle task) */
+/* ING Challenge Coverage Dashboard — renders coverage data produced by the Gradle task. */
 
 (() => {
     const DATA_URL = 'coverage.json';
 
     // ---------- Theme ----------
-    const savedTheme = localStorage.getItem('katty.theme');
+    const THEME_KEY = 'ing-challenge.coverage.theme';
+    const savedTheme = localStorage.getItem(THEME_KEY);
     if (savedTheme === 'light' || savedTheme === 'dark') {
         document.documentElement.setAttribute('data-theme', savedTheme);
     }
     document.getElementById('theme-toggle').addEventListener('click', () => {
         const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
         document.documentElement.setAttribute('data-theme', next);
-        localStorage.setItem('katty.theme', next);
+        localStorage.setItem(THEME_KEY, next);
     });
 
     // ---------- Helpers ----------
@@ -48,23 +49,38 @@
     };
 
     // ---------- Data load ----------
+    // Strategy:
+    //   1. Preferred: `window.__COVERAGE__` — the Gradle task embeds it into the
+    //      generated index.html so the dashboard works when opened via file://
+    //      (fetch() is blocked on file:// in Chrome/Safari).
+    //   2. Fallback: fetch('coverage.json') — useful when serving via `python3 -m http.server`
+    //      or when iterating on the template in a dev server.
+    //   3. If both fail, show an actionable empty state.
     async function load() {
+        if (typeof window.__COVERAGE__ === 'object' && window.__COVERAGE__) {
+            return window.__COVERAGE__;
+        }
         try {
             const res = await fetch(DATA_URL, { cache: 'no-store' });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             return await res.json();
         } catch (e) {
+            const isFile = window.location.protocol === 'file:';
+            const hint = isFile
+                ? `You're viewing the <strong>template</strong> at <code>coverage-dashboard/index.html</code>.
+                   Run the Gradle task and open the generated file instead:
+                   <pre><code>cd ing-challenge
+./gradlew coverageReport
+open build/reports/coverage-dashboard/index.html</code></pre>`
+                : `No <code>coverage.json</code> alongside <code>index.html</code>.
+                   Run <code>./gradlew coverageReport</code> and refresh.`;
             document.querySelector('#modules-tbody').innerHTML = `
-                <tr><td colspan="5" class="empty-state">
-                    Could not load <code>coverage.json</code>.<br/>
-                    Run <code>./gradlew coverageReport</code> and open the
-                    generated <code>build/reports/coverage-dashboard/index.html</code>.
-                </td></tr>`;
+                <tr><td colspan="5" class="empty-state">${hint}</td></tr>`;
             textOf('line.pct', '—');
             textOf('branch.pct', '—');
             textOf('method.pct', '—');
             textOf('class.pct', '—');
-            console.error(e);
+            console.error('Coverage data unavailable:', e);
             return null;
         }
     }

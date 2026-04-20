@@ -183,8 +183,24 @@ tasks.register("generateCoverageDashboard") {
         }
         val json = renderCoverageJson(xml)
         java.io.File(out, "coverage.json").writeText(json)
-        logger.lifecycle("Coverage dashboard ready:")
-        logger.lifecycle("  file://${java.io.File(out, "index.html").absolutePath}")
+
+        // Inline the JSON into index.html as window.__COVERAGE__ so the dashboard
+        // works when opened via file:// (browsers block fetch() for local files).
+        val indexFile = java.io.File(out, "index.html")
+        val indexHtml = indexFile.readText()
+        val inlineScript = buildString {
+            append("<script id=\"coverage-data\">window.__COVERAGE__ = ")
+            append(json.trimEnd())
+            append(";</script>\n    <script src=\"assets/app.js\"></script>")
+        }
+        val patched = indexHtml.replace(
+            "<script src=\"assets/app.js\"></script>",
+            inlineScript,
+        )
+        indexFile.writeText(patched)
+
+        logger.lifecycle("Coverage dashboard ready (double-click to open):")
+        logger.lifecycle("  file://${indexFile.absolutePath}")
     }
 }
 
