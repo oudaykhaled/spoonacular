@@ -1,8 +1,54 @@
-# ING Recipes
+# ING Challenge — Recipe Search
 
-![CI](https://github.com/TODO-update/TODO-update/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/oudaykhaled/spoonacular/actions/workflows/ci.yml/badge.svg)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.2.10-7F52FF?logo=kotlin&logoColor=white)
+![Compose BOM](https://img.shields.io/badge/Compose%20BOM-2026.03-4285F4?logo=jetpackcompose&logoColor=white)
+![AGP](https://img.shields.io/badge/AGP-9.1-3DDC84?logo=android&logoColor=white)
+![Line coverage](https://img.shields.io/badge/line%20coverage-83%25-22c55e)
 
 A multi-module Jetpack Compose Android app built against Spoonacular's `complexSearch` API for the ING coding challenge. Recipes are searchable, sortable, paginated, cacheable offline via Room, and themable through the ING design system. The codebase is organised around clean architecture, convention plugins, and a staff-engineer level test pyramid (unit, instrumentation, macrobenchmark, baseline profile).
+
+## Staff-level techniques used (quick index)
+
+If you're scanning this repo for the senior-engineering bits, here's where to look:
+
+| # | Technique | Where |
+|---|-----------|-------|
+| 1 | Convention plugins (`recipes.android.application` / `library` / `feature`) + version catalog | [`build-logic/convention/`](build-logic/convention/), [`gradle/libs.versions.toml`](gradle/libs.versions.toml) |
+| 2 | Hilt `@IntoSet` `InterceptorEntry` with `order` + `type`, plus `src/debug` vs `src/release` source-set DI swap | [`core/network/src/main/.../di/InterceptorBindingsModule.kt`](core/network/src/main/java/nl/ing/assessment/recipes/core/network/di/InterceptorBindingsModule.kt), [`core/network/src/debug/`](core/network/src/debug), [`core/logging/src/debug/`](core/logging/src/debug) |
+| 3 | `@AssistedInject` + `@HiltViewModel(assistedFactory = ...)` for typed nav args | [`feature/details/.../DetailsViewModel.kt`](feature/details/src/main/java/nl/ing/assessment/recipes/feature/details/viewmodel/DetailsViewModel.kt) |
+| 4 | Navigation 3 with `@Serializable sealed interface AppRoute : NavKey` + deep-link parser | [`app/.../navigation/AppRoute.kt`](app/src/main/java/nl/ing/assessment/recipes/navigation/AppRoute.kt), [`AppNavigation.kt`](app/src/main/java/nl/ing/assessment/recipes/navigation/AppNavigation.kt), [`DeepLinkParser.kt`](app/src/main/java/nl/ing/assessment/recipes/navigation/DeepLinkParser.kt) |
+| 5 | Route/Screen MVVM split — stateless `*Screen`, named lambdas, no `onEvent` dispatcher | [`feature/search/.../SearchRoute.kt` + `SearchScreen.kt`](feature/search/src/main/java/nl/ing/assessment/recipes/feature/search/presentation/) |
+| 6 | Offline-first Room with `@Transaction upsertSearchResults` / `upsertRecipeDetails` that preserves `isFavorite`, plus a DAO test asserting it | [`core/database/.../dao/RecipesDao.kt`](core/database/src/main/java/nl/ing/assessment/recipes/core/database/dao/RecipesDao.kt), [`RecipesDaoTest.kt`](core/database/src/androidTest/java/nl/ing/assessment/recipes/core/database/dao/RecipesDaoTest.kt) |
+| 7 | Compose perf contract: `@Immutable UiState` + `ImmutableList` + `LazyColumn(key, contentType)` + `snapshotFlow { layoutInfo }` infinite scroll | [`feature/search/.../SearchUiState.kt`](feature/search/src/main/java/nl/ing/assessment/recipes/feature/search/viewmodel/SearchUiState.kt), [`SearchScreen.kt`](feature/search/src/main/java/nl/ing/assessment/recipes/feature/search/presentation/SearchScreen.kt) |
+| 8 | One-way data flow: `MutableStateFlow.asStateFlow()` + `Channel(BUFFERED).receiveAsFlow()`, never `SharedFlow` | every ViewModel under `feature/*/viewmodel/` |
+| 9 | Design-system tokens via `Spacing`/`Sizing` data classes + `LocalSpacing`/`LocalSizing` composition locals + `MaterialTheme.spacing` / `.sizing` extensions | [`core/designsystem/.../theme/`](core/designsystem/src/main/java/nl/ing/assessment/recipes/core/designsystem/theme/) |
+| 10 | `UiText` sealed interface + `Throwable.toUiText()` + `ErrorKind` hierarchy — error localisation without leaking `Context` | [`util/UiText.kt`](core/designsystem/src/main/java/nl/ing/assessment/recipes/core/designsystem/util/UiText.kt), [`util/ErrorUiMapper.kt`](core/designsystem/src/main/java/nl/ing/assessment/recipes/core/designsystem/util/ErrorUiMapper.kt), [`domain/mapper/ErrorKindMapper.kt`](core/domain/src/main/java/nl/ing/assessment/recipes/core/domain/mapper/ErrorKindMapper.kt) |
+
+Honorable mentions: Hilt test-doubling via `@TestInstallIn(replaces = RepositoryModule::class)` with a shared [`FakeRecipesRepository`](core/testing/src/main/java/nl/ing/assessment/recipes/core/testing/FakeRecipesRepository.kt); cancellation-safe `RetryInterceptor` (polls `chain.call().isCanceled()` and restores the interrupt flag); debounced search pipeline (`searchQueryFlow.debounce(350L).distinctUntilChanged().onEach { performSearch(...) }.launchIn(...)`).
+
+## Coverage dashboard
+
+One command runs every module's unit tests, merges the JaCoCo XML, and renders a custom HTML dashboard (dark/light toggle, sortable modules, best/worst-covered class rankings, full package drill-down) — not the default JaCoCo HTML.
+
+```bash
+./gradlew coverageReport
+open build/reports/coverage-dashboard/index.html
+```
+
+Pass `-PwithInstrumentation=true` to also run instrumented tests (requires a device).
+
+![Coverage dashboard — dark](screenshots/dashboard/02-hero-dark.png)
+
+<details>
+<summary>Full page (dark and light)</summary>
+
+![Full dashboard (dark)](screenshots/dashboard/01-full-dark.png)
+![Full dashboard (light)](screenshots/dashboard/03-full-light.png)
+
+</details>
+
+The web project that renders the dashboard lives at [`coverage-dashboard/`](coverage-dashboard/) — it is a plain HTML/CSS/JS app with no toolchain; the Gradle task parses the merged JaCoCo XML into a JSON blob and inlines it into the generated `index.html` so double-clicking the file works.
 
 ## Local setup
 
