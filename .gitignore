@@ -1,0 +1,39 @@
+# Built output
+build/
+**/build/
+
+# Gradle
+.gradle/
+**/.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+
+# Local configuration
+local.properties
+
+# Android Studio / IntelliJ IDEA
+*.iml
+.idea/
+*.iws
+*.ipr
+out/
+captures/
+.externalNativeBuild/
+.cxx/
+.kotlin/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Keystore / signing (never commit)
+*.jks
+*.keystore
+keystore.properties
+release/
+
+# Benchmark / profiling output
+benchmark-output.json
+
+# Kotlin incremental compilation cache is already in build/

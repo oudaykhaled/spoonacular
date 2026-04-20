@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">Settings</string>
+    <string name="settings_theme_section">Theme</string>
+    <string name="settings_theme_system">System default</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_dynamic_color">Dynamic color</string>
+    <string name="settings_dynamic_color_caption">Available on Android 12+</string>
+    <string name="settings_about">About</string>
+    <string name="settings_about_description">ING Recipes — a sample multi-module Android app built with Jetpack Compose, Hilt, and Kotlin Coroutines.</string>
+    <string name="settings_back">Back</string>
+</resources>

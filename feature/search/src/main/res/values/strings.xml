@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="search_placeholder">Search recipes</string>
+    <string name="search_empty_title">Find your next recipe</string>
+    <string name="search_empty_subtitle">Start typing to search thousands of recipes.</string>
+    <string name="error_loading">Unable to load recipes. Please try again.</string>
+    <string name="no_results_title">No recipes found</string>
+    <string name="no_results_subtitle">Try a different search term or sort option.</string>
+</resources>

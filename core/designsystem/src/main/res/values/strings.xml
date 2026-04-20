@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cd_favorite">Remove from favorites</string>
+    <string name="cd_not_favorite">Add to favorites</string>
+    <string name="cd_clear_search">Clear search</string>
+    <string name="cd_search">Search</string>
+
+    <string name="error_network">No internet connection. Check your network and try again.</string>
+    <string name="error_server">Something went wrong on our end. Please try again.</string>
+    <string name="error_rate_limited">Too many requests. Please wait a moment and try again.</string>
+    <string name="error_unknown">Something went wrong. Please try again.</string>
+    <string name="error_retry">Retry</string>
+
+    <string name="banner_offline">You\'re offline. Showing cached results.</string>
+
+    <string name="sort_relevance">Relevance</string>
+    <string name="sort_popularity">Popularity</string>
+    <string name="sort_healthiness">Healthiness</string>
+    <string name="sort_time">Time</string>
+    <string name="sort_price">Price</string>
+
+    <string name="minutes_format">%1$d min</string>
+    <string name="health_score_format">Health %1$d</string>
+
+    <string name="empty_no_results_title">No recipes found</string>
+    <string name="empty_no_results_subtitle">Try a different search term.</string>
+
+    <string name="empty_favorites_title">No favorites yet</string>
+    <string name="empty_favorites_subtitle">Tap the heart on a recipe to save it here.</string>
+</resources>

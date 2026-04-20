@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="details_title_fallback">Recipe</string>
+    <string name="details_back">Back</string>
+    <string name="details_ingredients">Ingredients</string>
+    <string name="details_instructions">Instructions</string>
+    <string name="details_no_instructions">No instructions available.</string>
+    <string name="details_open_source">Open source</string>
+    <string name="details_servings_format">Serves %1$d</string>
+</resources>
