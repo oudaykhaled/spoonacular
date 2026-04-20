@@ -78,7 +78,7 @@ class DetailsViewModelTest {
         assertEquals(false, state.isLoading)
     }
 
-    @Test
+    @Test(timeout = 5000)
     fun `onOpenSource emits OpenUrl side effect with source url`() = runTest(dispatcher) {
         val recipe = TestFixtures.recipe(id = RECIPE_ID, sourceUrl = SOURCE_URL)
         val details = TestFixtures.recipeDetails(id = RECIPE_ID, recipe = recipe)

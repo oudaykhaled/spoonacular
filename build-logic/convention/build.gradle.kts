@@ -19,5 +19,9 @@ gradlePlugin {
             id = "recipes.android.feature"
             implementationClass = "RecipesAndroidFeaturePlugin"
         }
+        register("androidApplication") {
+            id = "recipes.android.application"
+            implementationClass = "RecipesAndroidApplicationPlugin"
+        }
     }
 }

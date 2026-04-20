@@ -7,6 +7,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import nl.ing.assessment.recipes.core.designsystem.util.UiText
@@ -27,6 +28,7 @@ fun DetailsRoute(
     val currentOnBack by rememberUpdatedState(onBack)
     val currentOnSnackbar by rememberUpdatedState(onShowSnackbar)
     val context = LocalContext.current
+    val resources = LocalResources.current
 
     LaunchedEffect(Unit) {
         viewModel.sideEffects.collect { effect ->
@@ -39,13 +41,13 @@ fun DetailsRoute(
                         }
                         context.startActivity(intent)
                     }.onFailure {
-                        currentOnSnackbar(context.getString(R.string.details_error_open_url))
+                        currentOnSnackbar(resources.getString(R.string.details_error_open_url))
                     }
                 }
                 is DetailsSideEffect.ShowSnackbar -> {
                     val message = when (val msg = effect.message) {
                         is UiText.Raw -> msg.value
-                        is UiText.Resource -> context.getString(msg.resId, *msg.args.toTypedArray())
+                        is UiText.Resource -> resources.getString(msg.resId, *msg.args.toTypedArray())
                     }
                     currentOnSnackbar(message)
                 }

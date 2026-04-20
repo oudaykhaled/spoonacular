@@ -57,6 +57,9 @@ class RecipesRepositoryImpl @Inject constructor(
                 number = number
             )
         }
+        // HTTP 200 guaranteed on the success path: wrapHttpException throws ServerException on any
+        // non-2xx, so reaching this line means the response was successful. The API returns plain
+        // DTOs (not retrofit2.Response<T>), so the real status code is not available here.
         logger.logNetworkRequest(
             method = "GET",
             url = "recipes/complexSearch?query=$query&offset=$offset&number=$number",
@@ -86,6 +89,9 @@ class RecipesRepositoryImpl @Inject constructor(
         val response = wrapHttpException {
             api.getRecipeDetails(id = recipeId)
         }
+        // HTTP 200 guaranteed on the success path: wrapHttpException throws ServerException on any
+        // non-2xx, so reaching this line means the response was successful. The API returns plain
+        // DTOs (not retrofit2.Response<T>), so the real status code is not available here.
         logger.logNetworkRequest(
             method = "GET",
             url = "recipes/$recipeId/information",
@@ -126,6 +132,17 @@ class RecipesRepositoryImpl @Inject constructor(
         dao.setFavorite(recipeId, !isCurrentlyFavorite)
     }
 
+    /**
+     * Returns true if data cached at [cachedAt] is older than [ttlMs] milliseconds.
+     * Currently informational only — the app does not enforce cache eviction.
+     * Enable by calling this check before serving cached data when a TTL policy is decided.
+     *
+     * @param cachedAt epoch millis when the data was cached (from [RecipeEntity.cachedAt])
+     * @param ttlMs time-to-live in milliseconds; defaults to 24 hours
+     */
+    private fun isCacheStale(cachedAt: Long, ttlMs: Long = CACHE_TTL_MS): Boolean =
+        clock() - cachedAt > ttlMs
+
     private suspend fun <T> wrapHttpException(block: suspend () -> T): T =
         try {
             block()
@@ -137,4 +154,9 @@ class RecipesRepositoryImpl @Inject constructor(
             )
             throw ServerException(code = e.code(), message = e.message())
         }
+
+    private companion object {
+        // 24-hour TTL — not yet enforced; see isCacheStale() for future use.
+        private const val CACHE_TTL_MS = 24 * 60 * 60 * 1_000L
+    }
 }

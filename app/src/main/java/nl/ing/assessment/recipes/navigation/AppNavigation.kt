@@ -67,6 +67,7 @@ private enum class BottomTab(
     ),
 }
 
+@Suppress("LongMethod")
 @Composable
 fun AppNavigation(
     initialDeepLinkRecipeId: Int? = null,
@@ -112,7 +113,7 @@ fun AppNavigation(
                             icon = {
                                 Icon(
                                     imageVector = if (selected) tab.selectedIcon else tab.unselectedIcon,
-                                    contentDescription = stringResource(tab.labelRes),
+                                    contentDescription = null,
                                 )
                             },
                             label = { Text(stringResource(tab.labelRes)) },

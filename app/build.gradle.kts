@@ -1,5 +1,5 @@
 plugins {
-    id("com.android.application")
+    id("recipes.android.application")
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt.android)
@@ -9,23 +9,12 @@ plugins {
 
 android {
     namespace = "nl.ing.assessment.recipes"
-    compileSdk = 36
 
     defaultConfig {
         applicationId = "nl.ing.assessment.recipes"
-        minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
-
-        testInstrumentationRunner = "nl.ing.assessment.recipes.HiltTestRunner"
-        vectorDrawables.useSupportLibrary = true
-    }
-
-    flavorDimensions += "environment"
-    productFlavors {
-        create("dev") { dimension = "environment" }
-        create("prod") { dimension = "environment" }
     }
 
     buildTypes {
@@ -49,28 +38,6 @@ android {
                 "benchmark-rules.pro"
             )
         }
-    }
-
-    buildFeatures {
-        compose = true
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-
-    packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-            excludes += "/META-INF/LICENSE.md"
-            excludes += "/META-INF/LICENSE-notice.md"
-        }
-    }
-
-    testOptions {
-        unitTests.isIncludeAndroidResources = true
-        unitTests.isReturnDefaultValues = true
     }
 }
 

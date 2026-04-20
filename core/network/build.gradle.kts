@@ -29,12 +29,17 @@ android {
         buildConfigField("String", "SPOONACULAR_API_KEY", "\"$spoonacularKey\"")
     }
 
+    // Flavor strategy: both use the same public API host today. `dev` is the default for local
+    // iteration; `prod` is reserved for a future staging URL or stricter BuildConfig (e.g. separate
+    // API project / proxy) without changing call sites — swap BASE_URL here when that lands.
     productFlavors {
         getByName("dev") {
             buildConfigField("String", "BASE_URL", "\"https://api.spoonacular.com/\"")
+            buildConfigField("String", "NETWORK_FLAVOR", "\"dev\"")
         }
         getByName("prod") {
             buildConfigField("String", "BASE_URL", "\"https://api.spoonacular.com/\"")
+            buildConfigField("String", "NETWORK_FLAVOR", "\"prod\"")
         }
     }
 

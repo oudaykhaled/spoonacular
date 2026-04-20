@@ -24,17 +24,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import coil.compose.AsyncImage
 import nl.ing.assessment.recipes.core.designsystem.R
 import nl.ing.assessment.recipes.core.designsystem.theme.sizing
 import nl.ing.assessment.recipes.core.designsystem.theme.spacing
+import nl.ing.assessment.recipes.core.designsystem.util.stripHtmlAndDecodeEntities
 import nl.ing.assessment.recipes.core.domain.model.Recipe
-
-private val HtmlTagRegex = "<[^>]*>".toRegex()
-
-private fun stripHtml(html: String): String =
-    HtmlTagRegex.replace(html, "").trim()
 
 @Composable
 fun RecipeCard(
@@ -44,13 +42,21 @@ fun RecipeCard(
     modifier: Modifier = Modifier
 ) {
     val cleanSummary = remember(recipe.summary) {
-        recipe.summary?.let(::stripHtml).orEmpty()
+        recipe.summary?.stripHtmlAndDecodeEntities().orEmpty()
     }
 
     Card(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
+            .semantics(mergeDescendants = true) {
+                contentDescription = buildString {
+                    append(recipe.title)
+                    recipe.readyInMinutes?.let { append(", $it minutes") }
+                    recipe.healthScore?.let { append(", health score ${it.toInt()}") }
+                    if (recipe.isFavorite) append(", favorited")
+                }
+            }
             .testTag("recipe_card_${recipe.id}"),
         shape = MaterialTheme.shapes.large,
         elevation = CardDefaults.cardElevation(defaultElevation = MaterialTheme.sizing.elevationSmall)

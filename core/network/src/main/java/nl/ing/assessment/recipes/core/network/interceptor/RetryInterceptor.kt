@@ -3,6 +3,7 @@ package nl.ing.assessment.recipes.core.network.interceptor
 import okhttp3.Interceptor
 import okhttp3.Response
 import java.io.IOException
+import kotlin.random.Random
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -62,7 +63,12 @@ class RetryInterceptor @Inject constructor() : Interceptor {
         }
     }
 
-    private fun backoffMillis(attempt: Int): Long = INITIAL_BACKOFF_MS * (1L shl attempt)
+    private fun backoffMillis(attempt: Int): Long {
+        val base = INITIAL_BACKOFF_MS * (1L shl attempt)
+        val jitterUpper = base / 2 + 1
+        val jitter = if (jitterUpper <= 1L) 0L else Random.nextLong(0, jitterUpper)
+        return base + jitter
+    }
 
     private companion object {
         const val MAX_RETRIES = 2

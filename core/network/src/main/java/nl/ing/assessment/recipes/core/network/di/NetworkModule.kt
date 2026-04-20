@@ -9,6 +9,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
+import okhttp3.CertificatePinner
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
@@ -45,6 +46,13 @@ object NetworkModule {
         sorted.filter { it.type == InterceptorType.NETWORK }.forEach {
             builder.addNetworkInterceptor(it.interceptor)
         }
+
+        // Pin SPKI hashes for api.spoonacular.com (leaf). Update if Spoonacular rotates certs;
+        // add a second pin from the issuing CA for safer rotation windows.
+        val pinner = CertificatePinner.Builder()
+            .add("api.spoonacular.com", "sha256/ilij17Y3nJ2GgpIPlEQY7ZJVtAggSxEcJEnkr0a0hzo=")
+            .build()
+        builder.certificatePinner(pinner)
 
         return builder.build()
     }

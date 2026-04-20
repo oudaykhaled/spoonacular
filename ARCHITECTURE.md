@@ -72,7 +72,13 @@ flowchart LR
 | `:feature:favorites` | Favorites tab backed by the same repository `Flow`, with optimistic favorite toggle. |
 | `:feature:settings` | Theme + dynamic-color preferences. `SettingsRepositoryImpl` (DataStore) implements the `SettingsRepository` interface that lives in `:core:domain/repository/`. |
 
-Convention plugins in `build-logic/convention/` (`recipes.android.library`, `recipes.android.feature`) keep AGP config, Compose, Hilt, KSP, flavour dimensions, and JVM target consistent across every module.
+Convention plugins in `build-logic/convention/` keep AGP config, Compose, Hilt, KSP, flavour dimensions, and JVM target consistent across every module:
+
+| Plugin | Applies to | Responsibilities |
+| --- | --- | --- |
+| `recipes.android.library` | Every `core:*` module | `com.android.library`, `compileSdk`, `minSdk`, JVM 11, `dev`/`prod` flavours, unit-test coverage, conditional `androidTest`. |
+| `recipes.android.feature` | Every `feature:*` module | Extends the library plugin with Compose, Kotlin Serialization, Hilt, and KSP. |
+| `recipes.android.application` | `:app` only | `com.android.application`, Compose, Hilt, KSP, JaCoCo coverage task (`jacocoCoverageCheck`), and `dev`/`prod` flavour wiring for the application module. |
 
 ## Layering
 
@@ -348,6 +354,8 @@ The cached-recipes `Flow` (`observeCachedRecipes`) runs independently of the sea
 
 - **Convention plugins**: `recipes.android.library` and `recipes.android.feature` (in `build-logic/convention`). Every library module applies the former; every feature module applies the latter. The library plugin sets `testInstrumentationRunner = "nl.ing.assessment.recipes.HiltTestRunner"` by default so `@HiltAndroidTest` works in any library that grows `src/androidTest`.
 - **Flavour dimension** `environment`: `dev`, `prod`. Both resolve to the same `BASE_URL` today but exist so alternative environments can be wired without touching Kotlin. See `core/network/build.gradle.kts`.
+
+  > `dev` and `prod` flavors currently share the same `BASE_URL`. The dimension is reserved for future differentiation (e.g. staging vs production API projects, stricter cert pinning on prod only). Change `BASE_URL` per flavor in `core/network/build.gradle.kts` when a staging environment is available.
 - **Build types**: `debug`, `release` (`isMinifyEnabled = true`, `isShrinkResources = true`, `proguard-android-optimize.txt` + `app/proguard-rules.pro`), and a `benchmark` type declared in both `:app` and `:benchmark`. The `:app` benchmark type inherits from `release`, keeps R8 enabled, but is debuggable so macrobenchmarks can attach. `:benchmark` sets `matchingFallbacks += "release"`.
 - **Baseline profile plumbing**: `:app` applies the `androidx.baselineprofile` plugin and declares `"baselineProfile"(project(":benchmark"))` + `implementation(libs.androidx.profileinstaller)`. `:benchmark` also applies the plugin and hosts `BaselineProfileGenerator`. At release-build time, the plugin invokes the generator (when producing the profile) and packages the resulting `baseline-prof.txt` into `:app`'s APK, which `androidx.profileinstaller` then installs on device.
 - **`BuildConfig`** fields injected from `local.properties` / env: `SPOONACULAR_API_KEY`, `BASE_URL`, `VERSION_NAME`, `DEBUG_INTERCEPTORS`.
@@ -355,6 +363,7 @@ The cached-recipes `Flow` (`observeCachedRecipes`) runs independently of the sea
 - **KSP** drives Hilt (`hilt-android-compiler`) and Room (`androidx.room`) code generation.
 - **Detekt** is wired in the root `build.gradle.kts` via `subprojects { apply(plugin = "io.gitlab.arturbosch.detekt") }` with `config/detekt/detekt.yml`.
 - **JaCoCo aggregated report**: the root `jacocoCombinedReport` task (`build.gradle.kts`) depends on every module's `testDevDebugUnitTest`, collects `.exec` files from `outputs/unit_test_code_coverage/devDebugUnitTest`, and emits HTML + XML at `build/reports/jacoco/combined/`. Generated Hilt classes, activities, Compose previews, serializers, and Room `_Impl` classes are filtered out via `fileFilter`.
+- **Coverage gate**: a `jacocoCoverageCheck` Gradle task (wired by the `recipes.android.application` convention plugin in `:app`) enforces a minimum **50% line coverage** threshold. Run with `./gradlew jacocoCoverageCheck`. Increase the threshold in `:app/build.gradle.kts` as coverage improves.
 - **`allInstrumentedTests`** root task discovers every module that actually has `src/androidTest` sources and runs their `connectedDevDebugAndroidTest` tasks.
 
 ## Known Limitations
@@ -364,4 +373,4 @@ The cached-recipes `Flow` (`observeCachedRecipes`) runs independently of the sea
 - Image loading (Coil) has no explicit pre-cache strategy; list rows trigger a fetch on composition. Scroll jank is not profiled beyond the general macrobenchmark.
 - Crash reporting is a `NoOpLogger` / `NoOpEventTracker` in release. A production build would need real implementations wired behind a consent flag.
 - `SPOONACULAR_API_KEY` is injected into `BuildConfig`, which puts the string literal in the APK. This is acceptable for a challenge but is not a secrets boundary.
-- There is no CI pipeline configured in the repo; the quality gates (unit, Detekt, JaCoCo, instrumentation, macrobenchmark, baseline profile) all exist as Gradle tasks but must be invoked manually.
+- Instrumented tests, macrobenchmarks, and baseline-profile generation all require a physical device or emulator and are not run in CI; they must be invoked manually.

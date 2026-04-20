@@ -33,8 +33,11 @@ import nl.ing.assessment.recipes.core.designsystem.theme.spacing
 import nl.ing.assessment.recipes.core.designsystem.util.UiText
 import nl.ing.assessment.recipes.core.domain.model.Recipe
 import nl.ing.assessment.recipes.core.domain.model.SortOrder
+import nl.ing.assessment.recipes.core.designsystem.preview.LightDarkPreview
+import nl.ing.assessment.recipes.core.designsystem.theme.RecipesTheme
 import nl.ing.assessment.recipes.feature.search.R
 import nl.ing.assessment.recipes.feature.search.viewmodel.SearchUiState
+import kotlinx.collections.immutable.persistentListOf
 
 private const val PREFETCH_THRESHOLD = 4
 
@@ -109,6 +112,7 @@ private fun SearchContent(
         state.error != null && state.recipes.isEmpty() -> ErrorState(
             message = state.error,
             onRetry = {
+                // Dismiss error state before retrying so the loading indicator shows immediately.
                 onDismissError()
                 onRetry()
             },
@@ -191,5 +195,25 @@ private fun RecipesList(
                 }
             }
         }
+    }
+}
+
+@LightDarkPreview
+@Composable
+private fun SearchScreenPreview() {
+    RecipesTheme {
+        SearchScreen(
+            state = SearchUiState(
+                recipes = persistentListOf(),
+                isLoading = false,
+            ),
+            onSearchQueryChanged = {},
+            onSortChanged = {},
+            onRefresh = {},
+            onLoadNextPage = {},
+            onRecipeClicked = {},
+            onToggleFavorite = {},
+            onDismissError = {},
+        )
     }
 }

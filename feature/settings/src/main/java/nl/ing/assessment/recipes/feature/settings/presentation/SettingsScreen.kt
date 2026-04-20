@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import nl.ing.assessment.recipes.core.designsystem.preview.LightDarkPreview
 import nl.ing.assessment.recipes.core.designsystem.theme.RecipesTheme
 import nl.ing.assessment.recipes.core.designsystem.theme.spacing
 import nl.ing.assessment.recipes.core.domain.model.ThemeMode
@@ -230,7 +231,7 @@ private fun AboutSection(modifier: Modifier = Modifier) {
     }
 }
 
-@Suppress("UnusedPrivateMember")
+@LightDarkPreview
 @Composable
 private fun SettingsScreenPreview() {
     RecipesTheme {

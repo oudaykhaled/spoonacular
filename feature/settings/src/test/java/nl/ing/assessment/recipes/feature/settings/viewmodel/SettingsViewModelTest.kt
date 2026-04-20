@@ -4,6 +4,7 @@ import app.cash.turbine.test
 import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.verify
@@ -30,8 +31,8 @@ class SettingsViewModelTest {
     private val dynamicColorFlow = MutableStateFlow(false)
 
     private val repository: SettingsRepository = mockk(relaxed = true) {
-        coEvery { themeMode } returns themeModeFlow
-        coEvery { dynamicColor } returns dynamicColorFlow
+        every { themeMode } returns themeModeFlow
+        every { dynamicColor } returns dynamicColorFlow
         coEvery { setThemeMode(any()) } just Runs
         coEvery { setDynamicColor(any()) } just Runs
     }

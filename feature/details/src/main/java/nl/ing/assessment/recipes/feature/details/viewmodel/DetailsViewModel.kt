@@ -69,8 +69,11 @@ class DetailsViewModel @AssistedInject constructor(
         observeRecipeDetails(recipeId)
             .distinctUntilChanged()
             .onEach { cached ->
-                _state.update { current ->
-                    current.copy(details = cached ?: current.details)
+                if (cached != null) {
+                    _state.update { current -> current.copy(details = cached) }
+                } else {
+                    // Cache miss or eviction — trigger a fresh network fetch
+                    fetchDetails()
                 }
             }
             .catch { e -> _state.update { it.copy(error = e.toUiText()) } }

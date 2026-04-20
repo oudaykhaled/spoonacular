@@ -22,8 +22,11 @@ import nl.ing.assessment.recipes.core.designsystem.component.RecipeCard
 import nl.ing.assessment.recipes.core.designsystem.theme.spacing
 import nl.ing.assessment.recipes.core.designsystem.util.UiText
 import nl.ing.assessment.recipes.core.domain.model.Recipe
+import nl.ing.assessment.recipes.core.designsystem.preview.LightDarkPreview
+import nl.ing.assessment.recipes.core.designsystem.theme.RecipesTheme
 import nl.ing.assessment.recipes.feature.favorites.R
 import nl.ing.assessment.recipes.feature.favorites.viewmodel.FavoritesUiState
+import kotlinx.collections.immutable.persistentListOf
 import nl.ing.assessment.recipes.core.designsystem.R as DesignSystemR
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -112,5 +115,21 @@ private fun FavoritesList(
                     .testTag("favorite_card_${recipe.id}"),
             )
         }
+    }
+}
+
+@LightDarkPreview
+@Composable
+private fun FavoritesScreenPreview() {
+    RecipesTheme {
+        FavoritesScreen(
+            state = FavoritesUiState(
+                isLoading = false,
+                favorites = persistentListOf(),
+            ),
+            onRecipeClicked = {},
+            onToggleFavorite = {},
+            onDismissError = {},
+        )
     }
 }

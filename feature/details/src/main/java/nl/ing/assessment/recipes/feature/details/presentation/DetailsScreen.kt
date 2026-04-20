@@ -25,6 +25,8 @@ import nl.ing.assessment.recipes.core.designsystem.component.ErrorState
 import nl.ing.assessment.recipes.core.designsystem.component.FavoriteButton
 import nl.ing.assessment.recipes.core.designsystem.component.LoadingState
 import nl.ing.assessment.recipes.core.designsystem.theme.spacing
+import nl.ing.assessment.recipes.core.designsystem.preview.LightDarkPreview
+import nl.ing.assessment.recipes.core.designsystem.theme.RecipesTheme
 import nl.ing.assessment.recipes.feature.details.R
 import nl.ing.assessment.recipes.feature.details.presentation.components.DetailsHeader
 import nl.ing.assessment.recipes.feature.details.presentation.components.IngredientsSection
@@ -145,5 +147,20 @@ private fun DetailsContent(
         }
 
         Spacer(Modifier.height(MaterialTheme.spacing.huge))
+    }
+}
+
+@LightDarkPreview
+@Composable
+private fun DetailsScreenPreview() {
+    RecipesTheme {
+        DetailsScreen(
+            state = DetailsUiState(),
+            onBack = {},
+            onRetry = {},
+            onToggleFavorite = {},
+            onOpenSource = {},
+            onDismissError = {},
+        )
     }
 }

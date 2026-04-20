@@ -61,6 +61,11 @@ abstract class RecipesDao {
         upsertRecipes(merged)
     }
 
+    // NOTE: Race window — if `setFavorite` is called concurrently with `upsertRecipeDetails`,
+    // the isFavorite flag read inside this transaction may be stale. The `@Transaction` annotation
+    // guarantees atomicity *within* this method, not across separate DAO calls. A proper fix
+    // would require an optimistic-lock version column or a single atomic UPDATE...SET isFavorite =
+    // CASE WHEN ... pattern. Deferred to a future schema migration sprint.
     @Transaction
     open suspend fun upsertRecipeDetails(
         recipe: RecipeEntity,

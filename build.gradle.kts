@@ -108,3 +108,33 @@ tasks.register<JacocoReport>("jacocoCombinedReport") {
         }
     )
 }
+
+tasks.register("jacocoCoverageCheck") {
+    group = "verification"
+    description = "Fails the build if combined line coverage falls below the minimum threshold"
+    dependsOn("jacocoCombinedReport")
+    doLast {
+        val xmlReport = layout.buildDirectory.file("reports/jacoco/combined/jacoco.xml").get().asFile
+        if (!xmlReport.exists()) {
+            logger.warn("JaCoCo XML report not found, skipping coverage check")
+            return@doLast
+        }
+        val xml = xmlReport.readText()
+        // Extract LINE coverage: <counter type="LINE" missed="X" covered="Y"/>
+        val regex = Regex("""<counter type="LINE" missed="(\d+)" covered="(\d+)"/>""")
+        val match = regex.findAll(xml).lastOrNull()
+        if (match != null) {
+            val missed = match.groupValues[1].toLong()
+            val covered = match.groupValues[2].toLong()
+            val total = missed + covered
+            val pct = if (total > 0) covered * 100.0 / total else 0.0
+            logger.lifecycle("Combined line coverage: %.1f%% ($covered/$total lines)".format(pct))
+            val minimum = 50.0
+            if (pct < minimum) {
+                throw org.gradle.api.GradleException(
+                    "Line coverage %.1f%% is below the minimum %.1f%%".format(pct, minimum)
+                )
+            }
+        }
+    }
+}
