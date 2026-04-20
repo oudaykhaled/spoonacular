@@ -138,3 +138,188 @@ tasks.register("jacocoCoverageCheck") {
         }
     }
 }
+
+// =============================================================================
+// Coverage Dashboard — custom-rendered web dashboard for the merged JaCoCo XML
+// =============================================================================
+//
+// Pipeline:
+//   ./gradlew coverageReport
+//     → runs all unit tests (via jacocoCombinedReport deps)
+//     → optionally runs instrumented tests (-PwithInstrumentation=true)
+//     → jacocoCombinedReport emits build/reports/jacoco/combined/jacoco.xml
+//     → generateCoverageDashboard parses it into coverage.json and copies the
+//       static web project (coverage-dashboard/) into build/reports/coverage-dashboard/
+//
+// The web project at /coverage-dashboard/ is a plain HTML/CSS/JS app — see its README
+// for the data schema and customisation notes.
+
+tasks.register("generateCoverageDashboard") {
+    group = "verification"
+    description = "Renders coverage-dashboard/ as a static site populated with merged JaCoCo data"
+    dependsOn("jacocoCombinedReport")
+
+    val xmlFile = layout.buildDirectory.file("reports/jacoco/combined/jacoco.xml").map { it.asFile }
+    val outputDir = layout.buildDirectory.dir("reports/coverage-dashboard").map { it.asFile }
+    val templateDir = rootProject.file("coverage-dashboard")
+
+    inputs.file(xmlFile)
+    inputs.dir(templateDir)
+    outputs.dir(outputDir)
+
+    doLast {
+        val xml = xmlFile.get()
+        val out = outputDir.get()
+        if (!xml.exists()) {
+            throw org.gradle.api.GradleException(
+                "Combined JaCoCo XML not found at ${xml.path}. Run ./gradlew jacocoCombinedReport first."
+            )
+        }
+        out.mkdirs()
+        copy {
+            from(templateDir)
+            into(out)
+            exclude("README.md")
+        }
+        val json = renderCoverageJson(xml)
+        java.io.File(out, "coverage.json").writeText(json)
+        logger.lifecycle("Coverage dashboard ready:")
+        logger.lifecycle("  file://${java.io.File(out, "index.html").absolutePath}")
+    }
+}
+
+tasks.register("coverageReport") {
+    group = "verification"
+    description =
+        "One-shot coverage pipeline: runs all tests, merges JaCoCo, renders the HTML dashboard"
+    dependsOn("jacocoCombinedReport")
+    dependsOn("generateCoverageDashboard")
+
+    if (providers.gradleProperty("withInstrumentation").orNull == "true") {
+        dependsOn("allInstrumentedTests")
+    } else {
+        logger.lifecycle(
+            "coverageReport: instrumentation tests skipped " +
+                "(use -PwithInstrumentation=true to include them)"
+        )
+    }
+}
+
+fun renderCoverageJson(xmlFile: java.io.File): String {
+    // Minimal hand-rolled parser for the JaCoCo XML dialect. We use StAX via
+    // DocumentBuilder because it's Gradle-classpath-safe and avoids depending on
+    // third-party XML libs. Only the shapes we need are extracted.
+    val dbf = javax.xml.parsers.DocumentBuilderFactory.newInstance().apply {
+        // Disable DTD resolution — the JaCoCo report references an external DTD we don't ship
+        setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+        setFeature("http://apache.org/xml/features/disallow-doctype-decl", false)
+        isValidating = false
+        isNamespaceAware = false
+    }
+    val builder = dbf.newDocumentBuilder()
+    builder.setEntityResolver { _, _ -> org.xml.sax.InputSource(java.io.StringReader("")) }
+    val doc = builder.parse(xmlFile)
+    val root = doc.documentElement // <report>
+
+    data class Counter(var covered: Long = 0, var missed: Long = 0)
+    fun counterFromChild(el: org.w3c.dom.Element, type: String): Counter {
+        val children = el.childNodes
+        for (i in 0 until children.length) {
+            val n = children.item(i)
+            if (n.nodeType == org.w3c.dom.Node.ELEMENT_NODE) {
+                val e = n as org.w3c.dom.Element
+                if (e.tagName == "counter" && e.getAttribute("type") == type) {
+                    return Counter(
+                        covered = e.getAttribute("covered").toLongOrNull() ?: 0,
+                        missed = e.getAttribute("missed").toLongOrNull() ?: 0,
+                    )
+                }
+            }
+        }
+        return Counter()
+    }
+
+    val counterTypes = listOf("LINE", "BRANCH", "METHOD", "CLASS", "INSTRUCTION", "COMPLEXITY")
+    val jsonKeys = mapOf(
+        "LINE" to "line",
+        "BRANCH" to "branch",
+        "METHOD" to "method",
+        "CLASS" to "class",
+        "INSTRUCTION" to "instruction",
+        "COMPLEXITY" to "complexity",
+    )
+
+    val sb = StringBuilder()
+    sb.append("{\n")
+
+    // Total counters — defined as direct children of <report>
+    val totalCounters = counterTypes.associateWith { counterFromChild(root, it) }
+    sb.append("  \"total\": {\n")
+    sb.append("    \"generatedAt\": ${System.currentTimeMillis()},\n")
+    val totalParts = counterTypes.map { type ->
+        val c = totalCounters.getValue(type)
+        val key = jsonKeys.getValue(type)
+        "    \"$key\": { \"covered\": ${c.covered}, \"missed\": ${c.missed} }"
+    }
+    sb.append(totalParts.joinToString(",\n"))
+    sb.append("\n  },\n")
+
+    // Per-package, per-class
+    sb.append("  \"packages\": [\n")
+    val packages = root.getElementsByTagName("package")
+    val pkgJson = mutableListOf<String>()
+    for (i in 0 until packages.length) {
+        val pkg = packages.item(i) as org.w3c.dom.Element
+        // Skip nested <package> elements (there shouldn't be any, but guard anyway).
+        if (pkg.parentNode !== root) continue
+
+        val pkgCounters = counterTypes.associateWith { counterFromChild(pkg, it) }
+        val classChildren = pkg.childNodes
+        val classJson = mutableListOf<String>()
+        for (j in 0 until classChildren.length) {
+            val node = classChildren.item(j)
+            if (node.nodeType != org.w3c.dom.Node.ELEMENT_NODE) continue
+            val cls = node as org.w3c.dom.Element
+            if (cls.tagName != "class") continue
+
+            val classCounters = counterTypes.associateWith { counterFromChild(cls, it) }
+            // Class name is the basename of the class attribute (drop the package prefix)
+            val fqn = cls.getAttribute("name").replace('/', '.')
+            val simpleName = fqn.substringAfterLast('.')
+            val classParts = listOf("LINE", "BRANCH", "METHOD", "CLASS", "INSTRUCTION").map { type ->
+                val c = classCounters.getValue(type)
+                val key = jsonKeys.getValue(type)
+                "\"$key\": { \"covered\": ${c.covered}, \"missed\": ${c.missed} }"
+            }
+            classJson.add(
+                "        { \"name\": \"${simpleName.jsEscape()}\", ${classParts.joinToString(", ")} }"
+            )
+        }
+
+        val pkgMetricParts = listOf("LINE", "BRANCH", "METHOD", "CLASS", "INSTRUCTION").map { type ->
+            val c = pkgCounters.getValue(type)
+            val key = jsonKeys.getValue(type)
+            "      \"$key\": { \"covered\": ${c.covered}, \"missed\": ${c.missed} }"
+        }
+        val block = buildString {
+            append("    {\n")
+            append("      \"name\": \"${pkg.getAttribute("name").jsEscape()}\",\n")
+            append(pkgMetricParts.joinToString(",\n"))
+            append(",\n      \"classes\": [\n")
+            append(classJson.joinToString(",\n"))
+            append("\n      ]\n")
+            append("    }")
+        }
+        pkgJson.add(block)
+    }
+    sb.append(pkgJson.joinToString(",\n"))
+    sb.append("\n  ]\n")
+    sb.append("}\n")
+    return sb.toString()
+}
+
+fun String.jsEscape(): String = this
+    .replace("\\", "\\\\")
+    .replace("\"", "\\\"")
+    .replace("\n", "\\n")
+    .replace("\r", "\\r")

@@ -129,6 +129,7 @@ See [`ARCHITECTURE.md`](ARCHITECTURE.md) for module dependency graph and layerin
 - **KSP** — used for Hilt and Room code generation.
 - **JaCoCo** — per-module unit-test coverage merged by the root `jacocoCombinedReport` task. Run `./gradlew jacocoCombinedReport` to get the aggregated HTML + XML report.
 - **`jacocoCoverageCheck`** — enforces a **minimum 50% line coverage** threshold (wired by the `recipes.android.application` convention plugin). Run with `./gradlew jacocoCoverageCheck`. Increase the threshold in `:app/build.gradle.kts` as coverage improves.
+- **`coverageReport`** — single-command pipeline. Runs every module's unit tests, merges the JaCoCo results, and renders a **custom HTML dashboard** (modern dark/light UI, sortable per-module table, best/worst covered classes, full package drill-down) at `build/reports/coverage-dashboard/index.html`. The static web project itself lives at `coverage-dashboard/` — see its README for customisation. Pass `-PwithInstrumentation=true` to also run `allInstrumentedTests` (requires a device).
 - **GitHub Actions CI** — on every push/PR to `main`: Gradle wrapper validation → `lintDevDebug` + Detekt → `testDevDebugUnitTest` + `jacocoCoverageCheck` → `assembleDevDebug` + `assembleProdRelease`. Instrumented tests and benchmarks are excluded from CI (device required). See `.github/workflows/ci.yml`.
 - **Macrobenchmark + Baseline Profile** — runtime quality gate for startup and scroll performance.
 - **Android Lint** — runs as part of `assemble` / `check`.

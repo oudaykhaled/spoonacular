@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Katty · Coverage Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet"
+    />
+    <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+    <header class="app-header">
+        <div class="app-header__brand">
+            <div class="app-logo" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="28" height="28">
+                    <path d="M4 4h6v6H4V4zm0 10h6v6H4v-6zm10-10h6v6h-6V4zm0 10h6v6h-6v-6z"
+                          fill="currentColor" />
+                </svg>
+            </div>
+            <div>
+                <h1>Katty Coverage</h1>
+                <p class="subtitle">Single-pane view of unit + instrumentation test coverage</p>
+            </div>
+        </div>
+        <div class="app-header__meta">
+            <span id="generated-at" class="chip chip--ghost">Loading…</span>
+            <button id="theme-toggle" class="icon-button" aria-label="Toggle theme">
+                <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18">
+                    <path fill="currentColor" d="M12 18a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm0-2a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0-14a1 1 0 0 1 1 1v2a1 1 0 1 1-2 0V3a1 1 0 0 1 1-1zm0 18a1 1 0 0 1 1 1v2a1 1 0 1 1-2 0v-2a1 1 0 0 1 1-1zm10-9a1 1 0 0 1-1 1h-2a1 1 0 1 1 0-2h2a1 1 0 0 1 1 1zM5 12a1 1 0 0 1-1 1H2a1 1 0 1 1 0-2h2a1 1 0 0 1 1 1zm12.66 6.66a1 1 0 0 1-1.42 0l-1.4-1.42a1 1 0 1 1 1.4-1.4l1.42 1.4a1 1 0 0 1 0 1.42zM7.17 8.58a1 1 0 0 1-1.42 0L4.34 7.17a1 1 0 1 1 1.42-1.41l1.41 1.41a1 1 0 0 1 0 1.41zm10.49-1.41a1 1 0 0 1 0 1.41l-1.41 1.41a1 1 0 1 1-1.42-1.41l1.42-1.41a1 1 0 0 1 1.41 0zM7.17 15.42a1 1 0 0 1 0 1.42l-1.41 1.41a1 1 0 1 1-1.42-1.41l1.42-1.42a1 1 0 0 1 1.41 0z" />
+                </svg>
+                <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18">
+                    <path fill="currentColor" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <main class="app-main">
+        <!-- Overall metrics row -->
+        <section class="metrics-grid" aria-label="Overall coverage">
+            <article class="metric-card" data-metric="line">
+                <div class="metric-card__head">
+                    <span class="metric-card__label">Line coverage</span>
+                    <span class="metric-card__icon">L</span>
+                </div>
+                <div class="metric-card__value">
+                    <span data-field="line.pct">—</span><span class="metric-card__unit">%</span>
+                </div>
+                <div class="metric-card__bar"><div class="metric-card__bar-fill" data-field="line.bar"></div></div>
+                <div class="metric-card__foot">
+                    <span data-field="line.covered">—</span> / <span data-field="line.total">—</span> lines
+                </div>
+            </article>
+
+            <article class="metric-card" data-metric="branch">
+                <div class="metric-card__head">
+                    <span class="metric-card__label">Branch coverage</span>
+                    <span class="metric-card__icon">B</span>
+                </div>
+                <div class="metric-card__value">
+                    <span data-field="branch.pct">—</span><span class="metric-card__unit">%</span>
+                </div>
+                <div class="metric-card__bar"><div class="metric-card__bar-fill" data-field="branch.bar"></div></div>
+                <div class="metric-card__foot">
+                    <span data-field="branch.covered">—</span> / <span data-field="branch.total">—</span> branches
+                </div>
+            </article>
+
+            <article class="metric-card" data-metric="method">
+                <div class="metric-card__head">
+                    <span class="metric-card__label">Method coverage</span>
+                    <span class="metric-card__icon">M</span>
+                </div>
+                <div class="metric-card__value">
+                    <span data-field="method.pct">—</span><span class="metric-card__unit">%</span>
+                </div>
+                <div class="metric-card__bar"><div class="metric-card__bar-fill" data-field="method.bar"></div></div>
+                <div class="metric-card__foot">
+                    <span data-field="method.covered">—</span> / <span data-field="method.total">—</span> methods
+                </div>
+            </article>
+
+            <article class="metric-card" data-metric="class">
+                <div class="metric-card__head">
+                    <span class="metric-card__label">Class coverage</span>
+                    <span class="metric-card__icon">C</span>
+                </div>
+                <div class="metric-card__value">
+                    <span data-field="class.pct">—</span><span class="metric-card__unit">%</span>
+                </div>
+                <div class="metric-card__bar"><div class="metric-card__bar-fill" data-field="class.bar"></div></div>
+                <div class="metric-card__foot">
+                    <span data-field="class.covered">—</span> / <span data-field="class.total">—</span> classes
+                </div>
+            </article>
+        </section>
+
+        <!-- Module breakdown -->
+        <section class="panel" aria-label="Modules">
+            <header class="panel__head">
+                <h2>Modules</h2>
+                <div class="panel__actions">
+                    <input
+                        id="module-search"
+                        type="search"
+                        class="input"
+                        placeholder="Filter by name…"
+                        aria-label="Filter modules"
+                    />
+                    <div class="segmented" role="tablist" aria-label="Metric to rank by">
+                        <button class="segmented__btn is-active" data-sort="line">Line</button>
+                        <button class="segmented__btn" data-sort="branch">Branch</button>
+                        <button class="segmented__btn" data-sort="method">Method</button>
+                        <button class="segmented__btn" data-sort="class">Class</button>
+                    </div>
+                </div>
+            </header>
+            <div class="panel__body">
+                <table class="coverage-table" aria-label="Per-module coverage">
+                    <thead>
+                        <tr>
+                            <th>Module</th>
+                            <th class="num">Line</th>
+                            <th class="num">Branch</th>
+                            <th class="num">Method</th>
+                            <th class="num">Class</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modules-tbody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Top lists -->
+        <section class="panel-grid">
+            <section class="panel" aria-label="Best-covered classes">
+                <header class="panel__head">
+                    <h2>Best covered classes</h2>
+                    <span class="chip chip--success">Top 10</span>
+                </header>
+                <ul id="top-covered" class="ranking"></ul>
+            </section>
+            <section class="panel" aria-label="Least-covered classes">
+                <header class="panel__head">
+                    <h2>Needs attention</h2>
+                    <span class="chip chip--danger">Bottom 10</span>
+                </header>
+                <ul id="bottom-covered" class="ranking"></ul>
+            </section>
+        </section>
+
+        <!-- Package drill-down -->
+        <section class="panel" aria-label="Packages">
+            <header class="panel__head">
+                <h2>Packages</h2>
+                <span id="packages-count" class="chip chip--ghost">—</span>
+            </header>
+            <div class="panel__body">
+                <table class="coverage-table" aria-label="Per-package coverage">
+                    <thead>
+                        <tr>
+                            <th>Package</th>
+                            <th class="num">Line</th>
+                            <th class="num">Branch</th>
+                            <th class="num">Method</th>
+                            <th class="num">Classes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="packages-tbody"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer class="app-footer">
+        <p>Generated by <code>./gradlew coverageReport</code> · JaCoCo data merged from
+            unit and instrumentation test runs</p>
+    </footer>
+
+    <script src="assets/app.js"></script>
+</body>
+</html>
