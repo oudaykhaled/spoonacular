@@ -9,8 +9,11 @@ import nl.ing.assessment.recipes.core.domain.model.RecipeDetails
 import nl.ing.assessment.recipes.core.domain.model.SortOrder
 import nl.ing.assessment.recipes.core.domain.repository.RecipesRepository
 import java.io.IOException
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class FakeRecipesRepository : RecipesRepository {
+@Singleton
+class FakeRecipesRepository @Inject constructor() : RecipesRepository {
 
     private val cachedFlow = MutableStateFlow<List<Recipe>>(emptyList())
     private val favoritesFlow = MutableStateFlow<List<Recipe>>(emptyList())

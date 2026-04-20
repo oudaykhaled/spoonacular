@@ -3,6 +3,7 @@ plugins { id("recipes.android.feature") }
 android { namespace = "nl.ing.assessment.recipes.feature.settings" }
 
 dependencies {
+    implementation(project(":core:domain"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:telemetry"))
 
@@ -30,6 +31,12 @@ dependencies {
     testImplementation(libs.turbine)
     testImplementation(libs.mockk)
     testImplementation(libs.robolectric)
+
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

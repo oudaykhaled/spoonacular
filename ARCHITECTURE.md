@@ -40,7 +40,10 @@ flowchart LR
     details --> telemetry
     favorites --> domain
     favorites --> designsystem
+    settings --> domain
     settings --> designsystem
+
+    designsystem --> domain
 
     database --> domain
     database --> network
@@ -51,21 +54,23 @@ flowchart LR
     benchmark -. targetProjectPath .-> app
 ```
 
+`:core:domain` is the single source of truth for cross-cutting types — notably `ThemeMode` (`core/domain/src/main/java/.../model/ThemeMode.kt`) and `SettingsRepository` (`core/domain/src/main/java/.../repository/SettingsRepository.kt`). `:core:designsystem` depends on `:core:domain` so it can host `UiText` and the central `Throwable.toUiText()` (see *Error mapping*).
+
 | Module | Role |
 | --- | --- |
 | `:app` | Host `Application`, `MainActivity`, Hilt entry point, navigation graph, theme wiring, app-level Hilt graph test. |
 | `:benchmark` | `com.android.test` module — macrobenchmarks (cold startup, scroll) and Baseline Profile generator targeting `:app`. |
-| `:core:domain` | Pure Kotlin models (`Recipe`, `RecipeDetails`, `Ingredient`, `RecipeStep`, `SortOrder`, `PageResult`, `ErrorKind`), use cases, repository interface, error mapping (`Throwable.toErrorKind()`). |
+| `:core:domain` | Pure Kotlin models (`Recipe`, `RecipeDetails`, `Ingredient`, `RecipeStep`, `SortOrder`, `PageResult`, `ErrorKind`, `ThemeMode`), use cases, repository interfaces (`RecipesRepository`, `SettingsRepository`), error classification (`Throwable.toErrorKind()`). |
 | `:core:database` | Room entities, `RecipesDao`, `RecipeEntityMapper`, and `RecipesRepositoryImpl` (the offline-first repo that implements `:core:domain`'s interface). |
-| `:core:network` | Retrofit `SpoonacularApi`, DTOs, `DtoMapper`, interceptors (API key, common headers, retry) and the OkHttp client assembled via `@IntoSet InterceptorEntry` with ordered application/network phases. |
-| `:core:designsystem` | Material 3 theme (`RecipesTheme`, `ThemeMode`), tonal palette, `Spacing`/`Sizing`/`Shape`/`Type` tokens, shared Composables (`RecipeCard`, `SearchBar`, `SortChipsRow`, `LoadingState`, `ErrorState`, `EmptyState`, `ConnectivityBanner`, `FavoriteButton`) and the `UiText` localisation primitive. |
+| `:core:network` | Retrofit `SpoonacularApi`, DTOs, `DtoMapper`, interceptors (API key, common headers, cancellation-safe retry) and the OkHttp client assembled via `@IntoSet InterceptorEntry` with ordered application/network phases. |
+| `:core:designsystem` | Material 3 theme (`RecipesTheme`), tonal palette, `Spacing`/`Sizing`/`Shape`/`Type` tokens, shared Composables (`RecipeCard`, `SearchBar`, `SortChipsRow`, `LoadingState`, `ErrorState`, `EmptyState`, `ConnectivityBanner`, `FavoriteButton`), the `UiText` localisation primitive, and the central `Throwable.toUiText()` extension (`util/ErrorUiMapper.kt`). Depends on `:core:domain` to consume `ErrorKind`. |
 | `:core:logging` | `Logger` interface with flavour-scoped implementations: `TimberLogger` in `src/debug`, `NoOpLogger` in `src/release`. |
 | `:core:telemetry` | `EventTracker` interface with `NoOpEventTracker` as the default binding. |
 | `:core:testing` | `FakeRecipesRepository` and `TestFixtures` used by feature unit tests so they can avoid touching Room or Retrofit. |
-| `:feature:search` | Search tab — `SearchViewModel`, `SearchRoute`, `SearchScreen`, infinite scroll, debounce. |
+| `:feature:search` | Search tab — `SearchViewModel`, `SearchRoute`, `SearchScreen`, infinite scroll, debounce, Material 3 `PullToRefreshBox`, offline-aware snackbar fallback, optimistic favorite toggle. |
 | `:feature:details` | Recipe detail with `@AssistedInject` ViewModel keyed by `recipeId`. |
-| `:feature:favorites` | Favorites tab backed by the same repository `Flow`. |
-| `:feature:settings` | Theme + dynamic-color preferences. Owns its own `SettingsRepository` (DataStore). |
+| `:feature:favorites` | Favorites tab backed by the same repository `Flow`, with optimistic favorite toggle. |
+| `:feature:settings` | Theme + dynamic-color preferences. `SettingsRepositoryImpl` (DataStore) implements the `SettingsRepository` interface that lives in `:core:domain/repository/`. |
 
 Convention plugins in `build-logic/convention/` (`recipes.android.library`, `recipes.android.feature`) keep AGP config, Compose, Hilt, KSP, flavour dimensions, and JVM target consistent across every module.
 
@@ -212,25 +217,46 @@ Every successful network result is written to Room *before* it is returned. The 
 
 ### Error mapping
 
-`Throwable.toErrorKind()` in `core/domain/src/main/java/.../mapper/ErrorKindMapper.kt` classifies any thrown error as `Network`, `Server`, `RateLimited`, or `Unknown`. ViewModels then convert that `ErrorKind` into a `UiText` pointing at the design-system string resource (`error_network`, `error_server`, `error_rate_limited`, plus a feature-local fallback).
+The error pipeline is a strict two-hop translation:
+
+```
+Throwable --(:core:domain)--> ErrorKind --(:core:designsystem)--> UiText
+```
+
+1. `Throwable.toErrorKind()` in `core/domain/src/main/java/.../mapper/ErrorKindMapper.kt` classifies any thrown error as `Network`, `Server`, `RateLimited`, or `Unknown`. This step is pure Kotlin and lives in `:core:domain` because it owns the taxonomy.
+2. `Throwable.toUiText()` in `core/designsystem/src/main/java/.../util/ErrorUiMapper.kt` is the single source of truth that ViewModels call. It delegates to `toErrorKind()` and resolves to a `UiText.Resource` pointing at `R.string.error_network` / `error_server` / `error_rate_limited` / `error_unknown` from `:core:designsystem`. It lives here (and not in `:core:domain`) because `:core:designsystem` already depends on `:core:domain` and owns the string resources — putting the mapper here avoids a circular dependency and removes per-ViewModel error-string duplication.
+
+No ViewModel builds error strings by hand. `SearchViewModel`, `FavoritesViewModel`, `DetailsViewModel`, and `SettingsViewModel` all call `throwable.toUiText()` and push the result into either `UiState.error` or a `ShowSnackbar` side effect.
 
 ## Navigation
 
-The navigation graph lives in `app/src/main/java/.../navigation/AppNavigation.kt` and is built on Navigation 3:
+The navigation graph lives in `app/src/main/java/.../navigation/AppNavigation.kt` and is built on Navigation 3. `AppNavigation` hosts a single `Scaffold` that owns the cross-cutting UI chrome — a `ConnectivityBanner` top bar, an app-wide `SnackbarHost`, and a root-only `NavigationBar` bottom bar — and `NavDisplay` runs inside its content slot:
 
 ```kotlin
 val backStack = rememberNavBackStack(AppRoute.Search)
-NavDisplay(
-    backStack = backStack,
-    onBack = { if (backStack.size > 1) backStack.removeLastOrNull() },
-    entryProvider = entryProvider {
-        entry<AppRoute.Search>    { SearchRoute(onNavigateToDetails = { id -> backStack.add(AppRoute.Details(id)) }, ...) }
-        entry<AppRoute.Favorites> { FavoritesRoute(...) }
-        entry<AppRoute.Settings>  { SettingsRoute(onBack = { backStack.removeLastOrNull() }) }
-        entry<AppRoute.Details>   { route -> DetailsRoute(recipeId = route.recipeId, onBack = { ... }, ...) }
-    },
-)
+val snackbarHostState = remember { SnackbarHostState() }
+val isOnRoot = backStack.size <= 1
+
+Scaffold(
+    topBar = { ConnectivityBanner() },
+    bottomBar = { if (isOnRoot) NavigationBar { /* Search / Favorites / Settings tabs */ } },
+    snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+) { innerPadding ->
+    NavDisplay(
+        backStack = backStack,
+        onBack = { if (backStack.size > 1) backStack.removeLastOrNull() },
+        modifier = Modifier.fillMaxSize().padding(innerPadding),
+        entryProvider = entryProvider {
+            entry<AppRoute.Search>    { SearchRoute(onNavigateToDetails = { id -> backStack.add(AppRoute.Details(id)) }, onShowSnackbar = showSnackbar) }
+            entry<AppRoute.Favorites> { FavoritesRoute(...) }
+            entry<AppRoute.Settings>  { SettingsRoute(onBack = { backStack.removeLastOrNull() }) }
+            entry<AppRoute.Details>   { route -> DetailsRoute(recipeId = route.recipeId, onBack = { ... }, onShowSnackbar = showSnackbar) }
+        },
+    )
+}
 ```
+
+The `onShowSnackbar` callback is a `(String) -> Unit` that every `Route` receives from `AppNavigation`, so snackbar messages emitted by any feature's `SideEffect` channel surface on the shared host rather than a per-screen one.
 
 Routes are typed, serializable `NavKey`s:
 
@@ -257,13 +283,13 @@ fun parseRecipeDeepLink(uri: Uri?): Int? {
 
 `MainActivity` passes the parsed id to `AppNavigation(initialDeepLinkRecipeId = ...)`, which pushes it onto the back stack in a `LaunchedEffect`, preserving the `Search` root underneath so Back returns to the list.
 
-**Bottom bar** is rendered by `AppNavigation` only when `backStack.size <= 1`. Selecting a root tab clears the stack and adds the new root key; non-root destinations pop instead of switching tabs.
+**Bottom bar** is rendered by the `Scaffold` only when `backStack.size <= 1`. Selecting a root tab clears the stack and adds the new root key; non-root destinations (like `Details`) simply hide the bar and Back pops the stack.
 
 ## Theming
 
 - ING tonal palette in `core/designsystem/src/main/java/.../theme/Color.kt` (Primary40 `#FF6200`, Secondary40 `#0054A6` navy, Tertiary40 `#7A5900` warm gold, plus full neutral + error ramps).
 - `RecipesTheme` assembles both `lightColorScheme` and `darkColorScheme` from those tokens. Live at `core/designsystem/src/main/java/.../theme/Theme.kt`.
-- `ThemeMode` is `SYSTEM` / `LIGHT` / `DARK`; persisted in DataStore by `SettingsManager` (`app/src/main/java/.../settings/SettingsManager.kt`) under `theme_mode`.
+- `ThemeMode` (`SYSTEM` / `LIGHT` / `DARK`) lives in `core/domain/src/main/java/.../model/ThemeMode.kt`. It is persisted through the `SettingsRepository` interface in `:core:domain/repository/`, whose single implementation is `SettingsRepositoryImpl` in `feature/settings/src/main/java/.../data/SettingsRepositoryImpl.kt` (Preferences DataStore, keys `theme_mode` + `dynamic_color`). There is no separate `SettingsManager`; all reads and writes go through the repository interface.
 - Dynamic color is opt-in and only applied on Android 12+ (`Build.VERSION.SDK_INT >= Build.VERSION_CODES.S`). When enabled, `dynamicLightColorScheme(context)` / `dynamicDarkColorScheme(context)` replaces the ING palette; otherwise the ING tonal palette is used.
 - `Spacing`, `Sizing`, `Shape`, `Type` tokens are exposed as `CompositionLocal`s (`MaterialTheme.spacing`, `MaterialTheme.sizing`) so feature code never hard-codes a dp value.
 
@@ -306,21 +332,24 @@ The cached-recipes `Flow` (`observeCachedRecipes`) runs independently of the sea
 | --- | --- | --- |
 | Domain + mappers | JUnit, pure | `core/domain/src/test/.../SearchRecipesUseCaseTest.kt`, `ObserveFavoritesUseCaseTest.kt`, `ToggleFavoriteUseCaseTest.kt`, `ErrorKindMapperTest.kt`, `SortOrderTest.kt` |
 | Repo | Robolectric + MockK + Turbine | `core/database/src/test/.../RecipesRepositoryImplTest.kt`, `RecipeEntityMapperTest.kt` |
-| Network DTO + interceptors | MockWebServer + JUnit | `core/network/src/test/.../RecipeDtoMapperTest.kt`, `ApiKeyInterceptorTest.kt`, `RetryInterceptorTest.kt`, `CommonHeadersInterceptorTest.kt` |
+| Network DTO + interceptors | MockWebServer + JUnit | `core/network/src/test/.../RecipeDtoMapperTest.kt`, `ApiKeyInterceptorTest.kt`, `RetryInterceptorTest.kt` (includes a cancellation/interrupt propagation test), `CommonHeadersInterceptorTest.kt` |
 | ViewModel | `FakeRecipesRepository` from `:core:testing`, coroutines-test, Turbine | `feature/search/src/test/.../SearchViewModelTest.kt`, `feature/details/src/test/.../DetailsViewModelTest.kt`, `FavoritesViewModelTest.kt`, `SettingsViewModelTest.kt` |
-| Compose UI | `ComposeTestRule` against stateless `Screen` composables | (per feature, opt-in) |
+| Compose UI (per feature) | `ComposeTestRule` against stateless `Screen` composables | `feature/search/src/androidTest/.../SearchScreenTest.kt` (5), `feature/favorites/src/androidTest/.../FavoritesScreenTest.kt` (4), `feature/details/src/androidTest/.../DetailsScreenTest.kt` (4), `feature/settings/src/androidTest/.../SettingsScreenTest.kt` (4) |
 | Room DAO | Android instrumentation | `core/database/src/androidTest/.../RecipesDaoTest.kt` |
-| Hilt graph | Instrumented `HiltAndroidTest` | `app/src/androidTest/.../HiltGraphTest.kt`, `FakeTestRepositoryModule.kt`, `HiltTestRunner.kt` |
-| Macrobenchmark | `MacrobenchmarkRule` | `benchmark/src/main/.../RecipesBenchmark.kt` (cold startup, scroll `search_list`) |
-| Baseline profile | `BaselineProfileRule` | `benchmark/src/main/.../BaselineProfileGenerator.kt` |
+| Hilt graph + navigation flow | Instrumented `@HiltAndroidTest` via `HiltTestRunner` | `app/src/androidTest/.../HiltGraphTest.kt`, `AppNavigationFlowTest.kt` (Search → bottom-bar → Favorites, against real `MainActivity` + Hilt graph), `FakeTestRepositoryModule.kt`, `HiltTestRunner.kt` |
+| Macrobenchmark | `MacrobenchmarkRule` | `benchmark/src/main/.../RecipesBenchmark.kt` (cold startup, scroll `search_list`; the scroll benchmark seeds a `"pasta"` query into `search_bar` in its `setupBlock` so the list always has data) |
+| Baseline profile | `BaselineProfileRule` | `benchmark/src/main/.../BaselineProfileGenerator.kt` — walks the full user journey (Search → list scroll → Details → back → Favorites → Settings → theme toggle → Search). Consumed by `:app` automatically via the `androidx.baselineprofile` plugin + `androidx.profileinstaller`. |
+
+`HiltTestRunner` is wired as `testInstrumentationRunner` in `:app/build.gradle.kts`, `:benchmark/build.gradle.kts`, and `RecipesAndroidLibraryPlugin`, so every module with `src/androidTest` sources can run `@HiltAndroidTest` against `HiltTestApplication`.
 
 `:core:testing` is explicitly excluded from the aggregated coverage report (along with `:benchmark`) so test-support code does not dilute the numbers.
 
 ## Build
 
-- **Convention plugins**: `recipes.android.library` and `recipes.android.feature` (in `build-logic/convention`). Every library module applies the former; every feature module applies the latter.
+- **Convention plugins**: `recipes.android.library` and `recipes.android.feature` (in `build-logic/convention`). Every library module applies the former; every feature module applies the latter. The library plugin sets `testInstrumentationRunner = "nl.ing.assessment.recipes.HiltTestRunner"` by default so `@HiltAndroidTest` works in any library that grows `src/androidTest`.
 - **Flavour dimension** `environment`: `dev`, `prod`. Both resolve to the same `BASE_URL` today but exist so alternative environments can be wired without touching Kotlin. See `core/network/build.gradle.kts`.
-- **Build types**: `debug`, `release`, and a `benchmark` type declared in `:benchmark` with `matchingFallbacks += "release"` so it can run against the release variant of `:app`.
+- **Build types**: `debug`, `release` (`isMinifyEnabled = true`, `isShrinkResources = true`, `proguard-android-optimize.txt` + `app/proguard-rules.pro`), and a `benchmark` type declared in both `:app` and `:benchmark`. The `:app` benchmark type inherits from `release`, keeps R8 enabled, but is debuggable so macrobenchmarks can attach. `:benchmark` sets `matchingFallbacks += "release"`.
+- **Baseline profile plumbing**: `:app` applies the `androidx.baselineprofile` plugin and declares `"baselineProfile"(project(":benchmark"))` + `implementation(libs.androidx.profileinstaller)`. `:benchmark` also applies the plugin and hosts `BaselineProfileGenerator`. At release-build time, the plugin invokes the generator (when producing the profile) and packages the resulting `baseline-prof.txt` into `:app`'s APK, which `androidx.profileinstaller` then installs on device.
 - **`BuildConfig`** fields injected from `local.properties` / env: `SPOONACULAR_API_KEY`, `BASE_URL`, `VERSION_NAME`, `DEBUG_INTERCEPTORS`.
 - **Source sets per build type**: `core:network/src/debug/...` adds an `HttpLoggingInterceptor` via `DebugInterceptorModule` (Hilt `@IntoSet`); `src/release/...` adds a no-op `ReleaseInterceptorModule`. `core:logging` has the same split for `TimberLogger` vs `NoOpLogger`.
 - **KSP** drives Hilt (`hilt-android-compiler`) and Room (`androidx.room`) code generation.
@@ -335,5 +364,4 @@ The cached-recipes `Flow` (`observeCachedRecipes`) runs independently of the sea
 - Image loading (Coil) has no explicit pre-cache strategy; list rows trigger a fetch on composition. Scroll jank is not profiled beyond the general macrobenchmark.
 - Crash reporting is a `NoOpLogger` / `NoOpEventTracker` in release. A production build would need real implementations wired behind a consent flag.
 - `SPOONACULAR_API_KEY` is injected into `BuildConfig`, which puts the string literal in the APK. This is acceptable for a challenge but is not a secrets boundary.
-- The benchmark `buildType` exists in `:benchmark` with `matchingFallbacks = "release"`, but `:app` does not declare its own `benchmark` buildType — consumers rely on the fallback. Declaring one explicitly would make the variant matrix more self-documenting.
-- There is no CI pipeline configured in the repo; the quality gates (unit, Detekt, JaCoCo, instrumentation, macrobenchmark) all exist as Gradle tasks but must be invoked manually.
+- There is no CI pipeline configured in the repo; the quality gates (unit, Detekt, JaCoCo, instrumentation, macrobenchmark, baseline profile) all exist as Gradle tasks but must be invoked manually.

@@ -1,7 +1,7 @@
-package nl.ing.assessment.recipes.feature.settings.data
+package nl.ing.assessment.recipes.core.domain.repository
 
 import kotlinx.coroutines.flow.Flow
-import nl.ing.assessment.recipes.core.designsystem.theme.ThemeMode
+import nl.ing.assessment.recipes.core.domain.model.ThemeMode
 
 interface SettingsRepository {
     val themeMode: Flow<ThemeMode>

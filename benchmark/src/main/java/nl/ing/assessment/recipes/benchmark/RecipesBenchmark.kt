@@ -8,6 +8,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Direction
+import androidx.test.uiautomator.Until
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -36,7 +37,12 @@ class RecipesBenchmark {
         metrics = listOf(FrameTimingMetric()),
         startupMode = StartupMode.WARM,
         iterations = 5,
-        setupBlock = { startActivityAndWait() }
+        setupBlock = {
+            startActivityAndWait()
+            val searchBar = device.findObject(By.res("search_bar"))
+            searchBar?.text = "pasta"
+            device.wait(Until.hasObject(By.res("search_list")), 5_000)
+        }
     ) {
         val list = device.findObject(By.res("search_list"))
         list?.setGestureMargin(device.displayWidth / 5)

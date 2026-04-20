@@ -11,7 +11,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
@@ -21,7 +23,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
-import nl.ing.assessment.recipes.core.designsystem.component.ConnectivityBanner
 import nl.ing.assessment.recipes.core.designsystem.component.EmptyState
 import nl.ing.assessment.recipes.core.designsystem.component.ErrorState
 import nl.ing.assessment.recipes.core.designsystem.component.LoadingState
@@ -37,6 +38,7 @@ import nl.ing.assessment.recipes.feature.search.viewmodel.SearchUiState
 
 private const val PREFETCH_THRESHOLD = 4
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
     state: SearchUiState,
@@ -50,8 +52,6 @@ fun SearchScreen(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        ConnectivityBanner()
-
         SearchBar(
             query = state.searchInput,
             onQueryChange = onSearchQueryChanged,
@@ -75,15 +75,21 @@ fun SearchScreen(
                 .testTag("sort_chips"),
         )
 
-        SearchContent(
-            state = state,
-            onLoadNextPage = onLoadNextPage,
-            onRecipeClicked = onRecipeClicked,
-            onToggleFavorite = onToggleFavorite,
-            onRetry = onRefresh,
-            onDismissError = onDismissError,
+        PullToRefreshBox(
+            isRefreshing = state.isRefreshing,
+            onRefresh = onRefresh,
             modifier = Modifier.fillMaxSize(),
-        )
+        ) {
+            SearchContent(
+                state = state,
+                onLoadNextPage = onLoadNextPage,
+                onRecipeClicked = onRecipeClicked,
+                onToggleFavorite = onToggleFavorite,
+                onRetry = onRefresh,
+                onDismissError = onDismissError,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
     }
 }
 

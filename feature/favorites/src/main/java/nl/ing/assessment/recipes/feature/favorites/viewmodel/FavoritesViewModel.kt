@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,10 +19,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import nl.ing.assessment.recipes.core.designsystem.R as DesignSystemR
-import nl.ing.assessment.recipes.core.designsystem.util.UiText
-import nl.ing.assessment.recipes.core.domain.mapper.toErrorKind
-import nl.ing.assessment.recipes.core.domain.model.ErrorKind
+import nl.ing.assessment.recipes.core.designsystem.util.toUiText
 import nl.ing.assessment.recipes.core.domain.model.Recipe
 import nl.ing.assessment.recipes.core.domain.usecase.ObserveFavoritesUseCase
 import nl.ing.assessment.recipes.core.domain.usecase.ToggleFavoriteUseCase
@@ -30,13 +28,10 @@ import javax.inject.Inject
 
 @HiltViewModel
 class FavoritesViewModel @Inject constructor(
-    observeFavorites: ObserveFavoritesUseCase,
-    toggleFavorite: ToggleFavoriteUseCase,
+    private val observeFavoritesUseCase: ObserveFavoritesUseCase,
+    private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
     eventTracker: EventTracker,
 ) : ViewModel() {
-
-    private val observeFavoritesUseCase: ObserveFavoritesUseCase = observeFavorites
-    private val toggleFavoriteUseCase: ToggleFavoriteUseCase = toggleFavorite
 
     private val _state = MutableStateFlow(FavoritesUiState())
     val state: StateFlow<FavoritesUiState> = _state.asStateFlow()
@@ -76,10 +71,20 @@ class FavoritesViewModel @Inject constructor(
 
     private fun toggleFavoriteInternal(recipe: Recipe) {
         viewModelScope.launch {
+            val previous = _state.value.favorites
+            _state.update { current ->
+                val optimistic = current.favorites.map {
+                    if (it.id == recipe.id) it.copy(isFavorite = !recipe.isFavorite) else it
+                }.toImmutableList()
+                current.copy(favorites = optimistic)
+            }
             markToggleLoading(recipe.id, loading = true)
             try {
                 toggleFavoriteUseCase(recipe.id, recipe.isFavorite)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
+                _state.update { it.copy(favorites = previous.toImmutableList()) }
                 _sideEffects.send(FavoritesSideEffect.ShowSnackbar(e.toUiText()))
             } finally {
                 markToggleLoading(recipe.id, loading = false)
@@ -96,12 +101,5 @@ class FavoritesViewModel @Inject constructor(
             }
             current.copy(toggleLoadingIds = updated.toImmutableList())
         }
-    }
-
-    private fun Throwable.toUiText(): UiText = when (toErrorKind()) {
-        ErrorKind.Network -> UiText.Resource(DesignSystemR.string.error_network)
-        ErrorKind.Server -> UiText.Resource(DesignSystemR.string.error_server)
-        ErrorKind.RateLimited -> UiText.Resource(DesignSystemR.string.error_rate_limited)
-        ErrorKind.Unknown -> UiText.Resource(DesignSystemR.string.error_unknown)
     }
 }

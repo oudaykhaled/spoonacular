@@ -12,7 +12,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import nl.ing.assessment.recipes.core.designsystem.theme.ThemeMode
+import nl.ing.assessment.recipes.core.domain.model.ThemeMode
+import nl.ing.assessment.recipes.core.domain.repository.SettingsRepository
 
 private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 

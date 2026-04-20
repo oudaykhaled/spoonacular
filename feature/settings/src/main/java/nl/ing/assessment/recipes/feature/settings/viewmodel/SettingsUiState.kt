@@ -2,7 +2,7 @@ package nl.ing.assessment.recipes.feature.settings.viewmodel
 
 import android.os.Build
 import androidx.compose.runtime.Immutable
-import nl.ing.assessment.recipes.core.designsystem.theme.ThemeMode
+import nl.ing.assessment.recipes.core.domain.model.ThemeMode
 
 @Immutable
 data class SettingsUiState(

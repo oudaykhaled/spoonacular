@@ -5,22 +5,27 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 import nl.ing.assessment.recipes.core.designsystem.theme.RecipesTheme
-import nl.ing.assessment.recipes.core.designsystem.theme.ThemeMode
+import nl.ing.assessment.recipes.core.domain.model.ThemeMode
+import nl.ing.assessment.recipes.core.domain.repository.SettingsRepository
 import nl.ing.assessment.recipes.navigation.AppNavigation
 import nl.ing.assessment.recipes.navigation.DeepLinkParser
-import nl.ing.assessment.recipes.settings.SettingsManager
-import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     @Inject
-    lateinit var settingsManager: SettingsManager
+    lateinit var settingsRepository: SettingsRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,15 +34,20 @@ class MainActivity : ComponentActivity() {
         val initialDeepLinkRecipeId = extractDeepLinkRecipeId(intent)
 
         setContent {
-            MainContent(initialDeepLinkRecipeId = initialDeepLinkRecipeId)
+            @OptIn(ExperimentalComposeUiApi::class)
+            Box(
+                modifier = Modifier.semantics { testTagsAsResourceId = true }
+            ) {
+                MainContent(initialDeepLinkRecipeId = initialDeepLinkRecipeId)
+            }
         }
     }
 
     @Composable
     private fun MainContent(initialDeepLinkRecipeId: Int?) {
-        val themeMode by settingsManager.themeMode
+        val themeMode by settingsRepository.themeMode
             .collectAsStateWithLifecycle(initialValue = ThemeMode.SYSTEM)
-        val dynamicColor by settingsManager.dynamicColor
+        val dynamicColor by settingsRepository.dynamicColor
             .collectAsStateWithLifecycle(initialValue = false)
 
         RecipesTheme(

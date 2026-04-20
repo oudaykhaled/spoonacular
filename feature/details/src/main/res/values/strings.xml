@@ -6,5 +6,6 @@
     <string name="details_instructions">Instructions</string>
     <string name="details_no_instructions">No instructions available.</string>
     <string name="details_open_source">Open source</string>
+    <string name="details_error_open_url">Couldn\'t open the recipe source</string>
     <string name="details_servings_format">Serves %1$d</string>
 </resources>

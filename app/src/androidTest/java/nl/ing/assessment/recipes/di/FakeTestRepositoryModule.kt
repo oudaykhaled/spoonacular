@@ -1,7 +1,7 @@
 package nl.ing.assessment.recipes.di
 
+import dagger.Binds
 import dagger.Module
-import dagger.Provides
 import dagger.hilt.components.SingletonComponent
 import dagger.hilt.testing.TestInstallIn
 import nl.ing.assessment.recipes.core.database.di.RepositoryModule
@@ -14,9 +14,9 @@ import javax.inject.Singleton
     components = [SingletonComponent::class],
     replaces = [RepositoryModule::class],
 )
-object FakeTestRepositoryModule {
+abstract class FakeTestRepositoryModule {
 
-    @Provides
+    @Binds
     @Singleton
-    fun provideFakeRecipesRepository(): RecipesRepository = FakeRecipesRepository()
+    abstract fun bindFakeRecipesRepository(impl: FakeRecipesRepository): RecipesRepository
 }

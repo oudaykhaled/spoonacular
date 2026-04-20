@@ -15,9 +15,9 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import nl.ing.assessment.recipes.core.designsystem.theme.ThemeMode
+import nl.ing.assessment.recipes.core.domain.model.ThemeMode
+import nl.ing.assessment.recipes.core.domain.repository.SettingsRepository
 import nl.ing.assessment.recipes.core.telemetry.EventTracker
-import nl.ing.assessment.recipes.feature.settings.data.SettingsRepository
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before

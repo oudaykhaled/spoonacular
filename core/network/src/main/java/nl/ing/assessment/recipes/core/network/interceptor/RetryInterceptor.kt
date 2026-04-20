@@ -14,29 +14,52 @@ class RetryInterceptor @Inject constructor() : Interceptor {
         var lastException: IOException? = null
 
         repeat(MAX_RETRIES + 1) { attempt ->
-            try {
-                val response = chain.proceed(request)
-                if (response.isSuccessful || response.code < SERVER_ERROR_THRESHOLD) return response
-                if (attempt < MAX_RETRIES) {
-                    response.close()
-                    Thread.sleep(backoffMillis(attempt))
-                } else {
-                    return response
-                }
+            if (chain.call().isCanceled()) throw IOException("Canceled")
+
+            val response = try {
+                chain.proceed(request)
             } catch (e: IOException) {
                 lastException = e
                 if (attempt < MAX_RETRIES) {
-                    Thread.sleep(backoffMillis(attempt))
+                    sleepCancellable(chain, backoffMillis(attempt))
+                    return@repeat
                 }
+                throw e
             } catch (e: Exception) {
-                lastException = IOException("Unexpected error during request", e)
+                val wrapped = IOException("Unexpected error during request", e)
+                lastException = wrapped
                 if (attempt < MAX_RETRIES) {
-                    Thread.sleep(backoffMillis(attempt))
+                    sleepCancellable(chain, backoffMillis(attempt))
+                    return@repeat
                 }
+                throw wrapped
+            }
+
+            if (response.isSuccessful || response.code < SERVER_ERROR_THRESHOLD) return response
+            if (attempt < MAX_RETRIES) {
+                response.close()
+                sleepCancellable(chain, backoffMillis(attempt))
+            } else {
+                return response
             }
         }
 
         throw lastException ?: IOException("Retry exhausted")
+    }
+
+    private fun sleepCancellable(chain: Interceptor.Chain, millis: Long) {
+        var remaining = millis
+        while (remaining > 0) {
+            if (chain.call().isCanceled()) throw IOException("Canceled")
+            val slice = if (remaining < SLEEP_SLICE_MS) remaining else SLEEP_SLICE_MS
+            try {
+                Thread.sleep(slice)
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
+                throw IOException("Interrupted", e)
+            }
+            remaining -= slice
+        }
     }
 
     private fun backoffMillis(attempt: Int): Long = INITIAL_BACKOFF_MS * (1L shl attempt)
@@ -45,5 +68,6 @@ class RetryInterceptor @Inject constructor() : Interceptor {
         const val MAX_RETRIES = 2
         const val INITIAL_BACKOFF_MS = 500L
         const val SERVER_ERROR_THRESHOLD = 500
+        const val SLEEP_SLICE_MS = 50L
     }
 }

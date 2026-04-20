@@ -28,8 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import nl.ing.assessment.recipes.core.designsystem.theme.RecipesTheme
-import nl.ing.assessment.recipes.core.designsystem.theme.ThemeMode
 import nl.ing.assessment.recipes.core.designsystem.theme.spacing
+import nl.ing.assessment.recipes.core.domain.model.ThemeMode
 import nl.ing.assessment.recipes.feature.settings.R
 import nl.ing.assessment.recipes.feature.settings.viewmodel.SettingsUiState
 

@@ -10,6 +10,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import nl.ing.assessment.recipes.core.designsystem.util.UiText
+import nl.ing.assessment.recipes.feature.details.R
 import nl.ing.assessment.recipes.feature.details.viewmodel.DetailsSideEffect
 import nl.ing.assessment.recipes.feature.details.viewmodel.DetailsViewModel
 
@@ -31,9 +32,15 @@ fun DetailsRoute(
         viewModel.sideEffects.collect { effect ->
             when (effect) {
                 is DetailsSideEffect.OpenUrl -> {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(effect.url))
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    context.startActivity(intent)
+                    runCatching {
+                        val uri = Uri.parse(effect.url)
+                        val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    }.onFailure {
+                        currentOnSnackbar(context.getString(R.string.details_error_open_url))
+                    }
                 }
                 is DetailsSideEffect.ShowSnackbar -> {
                     val message = when (val msg = effect.message) {

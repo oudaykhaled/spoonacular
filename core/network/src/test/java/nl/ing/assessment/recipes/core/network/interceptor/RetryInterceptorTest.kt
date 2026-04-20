@@ -6,8 +6,11 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.io.IOException
+import java.util.concurrent.atomic.AtomicReference
 
 class RetryInterceptorTest {
 
@@ -92,5 +95,77 @@ class RetryInterceptorTest {
         clientWithThrowing.newCall(
             Request.Builder().url(server.url("/")).build()
         ).execute()
+    }
+
+    @Test(timeout = 10_000)
+    fun `interrupted sleep propagates IOException and restores interrupt flag`() {
+        server.enqueue(MockResponse().setResponseCode(500))
+
+        val captured = AtomicReference<Throwable?>(null)
+        val call = client.newCall(
+            Request.Builder().url(server.url("/")).build()
+        )
+        val thread = Thread {
+            try {
+                call.execute()
+            } catch (t: Throwable) {
+                captured.set(t)
+            }
+        }
+        thread.start()
+
+        awaitRequestCount(1)
+        Thread.sleep(50)
+        thread.interrupt()
+        thread.join(5_000)
+
+        val thrown = captured.get()
+        assertTrue(
+            "Expected IOException from interrupted sleep, got $thrown",
+            thrown is IOException
+        )
+        assertEquals(1, server.requestCount)
+    }
+
+    @Test(timeout = 10_000)
+    fun `canceled call short-circuits retry loop`() {
+        server.enqueue(MockResponse().setResponseCode(500))
+
+        val captured = AtomicReference<Throwable?>(null)
+        val call = client.newCall(
+            Request.Builder().url(server.url("/")).build()
+        )
+        val thread = Thread {
+            try {
+                call.execute()
+            } catch (t: Throwable) {
+                captured.set(t)
+            }
+        }
+        thread.start()
+
+        awaitRequestCount(1)
+        Thread.sleep(50)
+        call.cancel()
+        thread.join(5_000)
+
+        val thrown = captured.get()
+        assertTrue(
+            "Expected IOException after cancel, got $thrown",
+            thrown is IOException
+        )
+        assertEquals(1, server.requestCount)
+    }
+
+    private fun awaitRequestCount(target: Int, timeoutMillis: Long = 2_000) {
+        val deadline = System.currentTimeMillis() + timeoutMillis
+        while (server.requestCount < target && System.currentTimeMillis() < deadline) {
+            Thread.sleep(10)
+        }
+        assertEquals(
+            "Expected server to receive $target request(s) within ${timeoutMillis}ms",
+            target,
+            server.requestCount
+        )
     }
 }

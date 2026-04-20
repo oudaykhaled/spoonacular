@@ -1,8 +1,8 @@
 package nl.ing.assessment.recipes.navigation
 
 import androidx.annotation.StringRes
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Search
@@ -13,6 +13,7 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -30,6 +31,7 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import kotlinx.coroutines.launch
 import nl.ing.assessment.recipes.R
+import nl.ing.assessment.recipes.core.designsystem.component.ConnectivityBanner
 import nl.ing.assessment.recipes.feature.details.presentation.DetailsRoute
 import nl.ing.assessment.recipes.feature.favorites.presentation.FavoritesRoute
 import nl.ing.assessment.recipes.feature.search.presentation.SearchRoute
@@ -87,9 +89,41 @@ fun AppNavigation(
     val currentRoot: NavKey = backStack.firstOrNull() ?: AppRoute.Search
     val isOnRoot = backStack.size <= 1
 
-    Column(modifier = modifier.fillMaxSize()) {
-        SnackbarHost(hostState = snackbarHostState)
-
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            ConnectivityBanner()
+        },
+        bottomBar = {
+            if (isOnRoot) {
+                NavigationBar(modifier = Modifier.testTag("bottom_navigation_bar")) {
+                    BottomTab.entries.forEach { tab ->
+                        val selected = currentRoot == tab.route
+                        NavigationBarItem(
+                            selected = selected,
+                            onClick = {
+                                if (!selected) {
+                                    backStack.apply {
+                                        clear()
+                                        add(tab.route)
+                                    }
+                                }
+                            },
+                            icon = {
+                                Icon(
+                                    imageVector = if (selected) tab.selectedIcon else tab.unselectedIcon,
+                                    contentDescription = stringResource(tab.labelRes),
+                                )
+                            },
+                            label = { Text(stringResource(tab.labelRes)) },
+                            modifier = Modifier.testTag(tab.testTag),
+                        )
+                    }
+                }
+            }
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+    ) { innerPadding ->
         NavDisplay(
             backStack = backStack,
             onBack = {
@@ -97,7 +131,9 @@ fun AppNavigation(
                     backStack.removeLastOrNull()
                 }
             },
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
             entryProvider = entryProvider {
                 entry<AppRoute.Search> {
                     SearchRoute(
@@ -129,32 +165,5 @@ fun AppNavigation(
                 }
             },
         )
-
-        if (isOnRoot) {
-            NavigationBar(modifier = Modifier.testTag("bottom_navigation_bar")) {
-                BottomTab.entries.forEach { tab ->
-                    val selected = currentRoot == tab.route
-                    NavigationBarItem(
-                        selected = selected,
-                        onClick = {
-                            if (!selected) {
-                                backStack.apply {
-                                    clear()
-                                    add(tab.route)
-                                }
-                            }
-                        },
-                        icon = {
-                            Icon(
-                                imageVector = if (selected) tab.selectedIcon else tab.unselectedIcon,
-                                contentDescription = stringResource(tab.labelRes),
-                            )
-                        },
-                        label = { Text(stringResource(tab.labelRes)) },
-                        modifier = Modifier.testTag(tab.testTag),
-                    )
-                }
-            }
-        }
     }
 }

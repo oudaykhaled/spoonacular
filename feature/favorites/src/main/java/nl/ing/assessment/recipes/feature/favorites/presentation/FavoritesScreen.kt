@@ -1,5 +1,6 @@
 package nl.ing.assessment.recipes.feature.favorites.presentation
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -15,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import nl.ing.assessment.recipes.core.designsystem.component.EmptyState
+import nl.ing.assessment.recipes.core.designsystem.component.ErrorBanner
 import nl.ing.assessment.recipes.core.designsystem.component.LoadingState
 import nl.ing.assessment.recipes.core.designsystem.component.RecipeCard
 import nl.ing.assessment.recipes.core.designsystem.theme.spacing
@@ -41,14 +43,24 @@ fun FavoritesScreen(
             )
         },
     ) { padding ->
-        FavoritesContent(
-            state = state,
-            onRecipeClicked = onRecipeClicked,
-            onToggleFavorite = onToggleFavorite,
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-        )
+        ) {
+            state.error?.let { error ->
+                ErrorBanner(
+                    message = error,
+                    onDismiss = onDismissError,
+                )
+            }
+            FavoritesContent(
+                state = state,
+                onRecipeClicked = onRecipeClicked,
+                onToggleFavorite = onToggleFavorite,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
     }
 }
 

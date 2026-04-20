@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import nl.ing.assessment.recipes.core.designsystem.util.toUiText
 import nl.ing.assessment.recipes.core.domain.usecase.GetRecipeDetailsUseCase
 import nl.ing.assessment.recipes.core.domain.usecase.ObserveRecipeDetailsUseCase
 import nl.ing.assessment.recipes.core.domain.usecase.ToggleFavoriteUseCase

@@ -5,7 +5,7 @@ import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
-import nl.ing.assessment.recipes.feature.settings.data.SettingsRepository
+import nl.ing.assessment.recipes.core.domain.repository.SettingsRepository
 import nl.ing.assessment.recipes.feature.settings.data.SettingsRepositoryImpl
 
 @Module

@@ -11,9 +11,9 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import nl.ing.assessment.recipes.core.designsystem.theme.ThemeMode
+import nl.ing.assessment.recipes.core.domain.model.ThemeMode
+import nl.ing.assessment.recipes.core.domain.repository.SettingsRepository
 import nl.ing.assessment.recipes.core.telemetry.EventTracker
-import nl.ing.assessment.recipes.feature.settings.data.SettingsRepository
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(

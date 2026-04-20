@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,15 +19,15 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import nl.ing.assessment.recipes.core.designsystem.util.UiText
-import nl.ing.assessment.recipes.core.domain.mapper.toErrorKind
-import nl.ing.assessment.recipes.core.domain.model.ErrorKind
+import nl.ing.assessment.recipes.core.designsystem.util.toUiText
+import nl.ing.assessment.recipes.core.domain.model.PageResult
 import nl.ing.assessment.recipes.core.domain.model.Recipe
 import nl.ing.assessment.recipes.core.domain.model.SortOrder
 import nl.ing.assessment.recipes.core.domain.usecase.ObserveCachedRecipesUseCase
 import nl.ing.assessment.recipes.core.domain.usecase.SearchRecipesUseCase
 import nl.ing.assessment.recipes.core.domain.usecase.ToggleFavoriteUseCase
 import nl.ing.assessment.recipes.core.telemetry.EventTracker
-import nl.ing.assessment.recipes.feature.search.R
+import java.io.IOException
 import javax.inject.Inject
 
 @OptIn(FlowPreview::class)
@@ -116,17 +117,7 @@ class SearchViewModel @Inject constructor(
 
     private fun performSearch(query: String, reset: Boolean, isRefresh: Boolean = false) {
         if (query.isBlank()) {
-            _state.update {
-                it.copy(
-                    isLoading = false,
-                    isLoadingMore = false,
-                    isRefreshing = false,
-                    offset = 0,
-                    totalResults = 0,
-                    hasMorePages = true,
-                    error = null,
-                )
-            }
+            clearForBlankQuery()
             return
         }
         viewModelScope.launch {
@@ -140,40 +131,85 @@ class SearchViewModel @Inject constructor(
             }
             try {
                 val result = searchRecipes(query, _state.value.sort, startOffset, PAGE_SIZE)
-                _state.update { current ->
-                    val merged = if (reset) {
-                        result.items.toImmutableList()
-                    } else {
-                        (current.recipes + result.items).distinctBy { it.id }.toImmutableList()
-                    }
-                    current.copy(
-                        recipes = merged,
-                        offset = startOffset + result.items.size,
-                        totalResults = result.totalResults,
-                        hasMorePages = result.hasMore,
-                        isLoading = false,
-                        isLoadingMore = false,
-                        isRefreshing = false,
-                    )
-                }
+                _state.update { it.applySearchSuccess(result, reset, startOffset) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: IOException) {
+                handleSearchIoError(e)
             } catch (e: Exception) {
-                _state.update {
-                    it.copy(
-                        isLoading = false,
-                        isLoadingMore = false,
-                        isRefreshing = false,
-                        error = e.toUiText(),
-                    )
-                }
+                _state.update { it.applySearchError(e.toUiText()) }
             }
+        }
+    }
+
+    private fun clearForBlankQuery() {
+        _state.update {
+            it.copy(
+                isLoading = false,
+                isLoadingMore = false,
+                isRefreshing = false,
+                offset = 0,
+                totalResults = 0,
+                hasMorePages = true,
+                error = null,
+            )
+        }
+    }
+
+    private fun SearchUiState.applySearchSuccess(
+        result: PageResult,
+        reset: Boolean,
+        startOffset: Int,
+    ): SearchUiState {
+        val merged = if (reset) {
+            result.items.toImmutableList()
+        } else {
+            (recipes + result.items).distinctBy { it.id }.toImmutableList()
+        }
+        return copy(
+            recipes = merged,
+            offset = startOffset + result.items.size,
+            totalResults = result.totalResults,
+            hasMorePages = result.hasMore,
+            isLoading = false,
+            isLoadingMore = false,
+            isRefreshing = false,
+        )
+    }
+
+    private fun SearchUiState.applySearchError(error: UiText): SearchUiState = copy(
+        isLoading = false,
+        isLoadingMore = false,
+        isRefreshing = false,
+        error = error,
+    )
+
+    private suspend fun handleSearchIoError(e: IOException) {
+        val current = _state.value
+        if (current.recipes.isNotEmpty()) {
+            _state.update {
+                it.copy(
+                    isLoading = false,
+                    isLoadingMore = false,
+                    isRefreshing = false,
+                )
+            }
+            _sideEffects.send(SearchSideEffect.ShowSnackbar(e.toUiText()))
+        } else {
+            _state.update { it.applySearchError(e.toUiText()) }
         }
     }
 
     private fun toggleFavoriteInternal(recipe: Recipe) {
         viewModelScope.launch {
+            val previous = _state.value.recipes
             _state.update { current ->
+                val optimistic = current.recipes.map {
+                    if (it.id == recipe.id) it.copy(isFavorite = !recipe.isFavorite) else it
+                }.toImmutableList()
                 current.copy(
-                    favoriteLoadingIds = (current.favoriteLoadingIds + recipe.id).toImmutableList()
+                    recipes = optimistic,
+                    favoriteLoadingIds = (current.favoriteLoadingIds + recipe.id).toImmutableList(),
                 )
             }
             try {
@@ -182,7 +218,10 @@ class SearchViewModel @Inject constructor(
                     "toggle_favorite",
                     mapOf("recipe_id" to recipe.id, "is_favorite" to !recipe.isFavorite)
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
+                _state.update { it.copy(recipes = previous.toImmutableList()) }
                 _sideEffects.send(SearchSideEffect.ShowSnackbar(e.toUiText()))
             } finally {
                 _state.update { current ->
@@ -206,13 +245,6 @@ class SearchViewModel @Inject constructor(
             val shouldBeFavorite = recipe.id in favoriteIds
             if (recipe.isFavorite == shouldBeFavorite) recipe else recipe.copy(isFavorite = shouldBeFavorite)
         }.toImmutableList()
-    }
-
-    private fun Throwable.toUiText(): UiText = when (toErrorKind()) {
-        ErrorKind.Network -> UiText.Resource(nl.ing.assessment.recipes.core.designsystem.R.string.error_network)
-        ErrorKind.Server -> UiText.Resource(nl.ing.assessment.recipes.core.designsystem.R.string.error_server)
-        ErrorKind.RateLimited -> UiText.Resource(nl.ing.assessment.recipes.core.designsystem.R.string.error_rate_limited)
-        ErrorKind.Unknown -> UiText.Resource(R.string.error_loading)
     }
 
     private companion object {

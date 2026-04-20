@@ -19,7 +19,7 @@ class RecipesAndroidLibraryPlugin : Plugin<Project> {
                 compileSdk = 36
                 defaultConfig {
                     minSdk = 24
-                    testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+                    testInstrumentationRunner = "nl.ing.assessment.recipes.HiltTestRunner"
                 }
                 flavorDimensions += "environment"
                 productFlavors {
