@@ -62,7 +62,8 @@ class SettingsViewModelTest {
         val viewModel = createViewModel()
 
         viewModel.state.test {
-            assertEquals(SettingsUiState(themeMode = ThemeMode.SYSTEM, dynamicColorEnabled = false).themeMode, awaitItem().themeMode)
+            val initial = awaitItem()
+            assertEquals(ThemeMode.SYSTEM, initial.themeMode)
 
             themeModeFlow.value = ThemeMode.DARK
             advanceUntilIdle()

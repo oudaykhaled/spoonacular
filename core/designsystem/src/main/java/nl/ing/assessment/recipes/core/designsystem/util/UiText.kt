@@ -10,12 +10,14 @@ sealed interface UiText {
     data class Resource(@StringRes val resId: Int, val args: List<Any> = emptyList()) : UiText
 }
 
+@Suppress("SpreadOperator") // Idiomatic varargs forwarding for string format arguments
 @Composable
 fun UiText.asString(): String = when (this) {
     is UiText.Raw -> value
     is UiText.Resource -> stringResource(resId, *args.toTypedArray())
 }
 
+@Suppress("SpreadOperator") // Idiomatic varargs forwarding for string format arguments
 fun UiText.asString(context: Context): String = when (this) {
     is UiText.Raw -> value
     is UiText.Resource -> context.getString(resId, *args.toTypedArray())

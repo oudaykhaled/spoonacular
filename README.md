@@ -1,5 +1,7 @@
 # ING Recipes
 
+![CI](https://github.com/TODO-update/TODO-update/actions/workflows/ci.yml/badge.svg)
+
 A multi-module Jetpack Compose Android app built against Spoonacular's `complexSearch` API for the ING coding challenge. Recipes are searchable, sortable, paginated, cacheable offline via Room, and themable through the ING design system. The codebase is organised around clean architecture, convention plugins, and a staff-engineer level test pyramid (unit, instrumentation, macrobenchmark, baseline profile).
 
 ## Local setup
@@ -65,6 +67,8 @@ SPOONACULAR_API_KEY=<your_key>
 
 Or open the project in Android Studio and run the `app` configuration.
 
+> **Convention plugins**: the project uses three convention plugins defined in `build-logic/convention/`. The `:app` module applies `recipes.android.application` (adds `com.android.application`, Compose, Hilt, KSP, and the `jacocoCoverageCheck` task). Library modules apply `recipes.android.library`; feature modules apply `recipes.android.feature`.
+
 ### Variants
 
 The app uses a two-axis variant matrix:
@@ -123,7 +127,9 @@ See [`ARCHITECTURE.md`](ARCHITECTURE.md) for module dependency graph and layerin
 
 - **Detekt** — applied to every subproject via `subprojects { apply(plugin = "io.gitlab.arturbosch.detekt") }` in the root build; config at `config/detekt/detekt.yml`.
 - **KSP** — used for Hilt and Room code generation.
-- **JaCoCo** — per-module unit-test coverage merged by the root `jacocoCombinedReport` task.
+- **JaCoCo** — per-module unit-test coverage merged by the root `jacocoCombinedReport` task. Run `./gradlew jacocoCombinedReport` to get the aggregated HTML + XML report.
+- **`jacocoCoverageCheck`** — enforces a **minimum 50% line coverage** threshold (wired by the `recipes.android.application` convention plugin). Run with `./gradlew jacocoCoverageCheck`. Increase the threshold in `:app/build.gradle.kts` as coverage improves.
+- **GitHub Actions CI** — on every push/PR to `main`: Gradle wrapper validation → `lintDevDebug` + Detekt → `testDevDebugUnitTest` + `jacocoCoverageCheck` → `assembleDevDebug` + `assembleProdRelease`. Instrumented tests and benchmarks are excluded from CI (device required). See `.github/workflows/ci.yml`.
 - **Macrobenchmark + Baseline Profile** — runtime quality gate for startup and scroll performance.
 - **Android Lint** — runs as part of `assemble` / `check`.
 

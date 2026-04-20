@@ -30,6 +30,7 @@ import nl.ing.assessment.recipes.core.designsystem.component.RecipeCard
 import nl.ing.assessment.recipes.core.designsystem.component.SearchBar
 import nl.ing.assessment.recipes.core.designsystem.component.SortChipsRow
 import nl.ing.assessment.recipes.core.designsystem.theme.spacing
+import nl.ing.assessment.recipes.core.designsystem.util.PrefetchThreshold
 import nl.ing.assessment.recipes.core.designsystem.util.UiText
 import nl.ing.assessment.recipes.core.domain.model.Recipe
 import nl.ing.assessment.recipes.core.domain.model.SortOrder
@@ -38,8 +39,6 @@ import nl.ing.assessment.recipes.core.designsystem.theme.RecipesTheme
 import nl.ing.assessment.recipes.feature.search.R
 import nl.ing.assessment.recipes.feature.search.viewmodel.SearchUiState
 import kotlinx.collections.immutable.persistentListOf
-
-private const val PREFETCH_THRESHOLD = 4
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -160,7 +159,7 @@ private fun RecipesList(
         }
             .distinctUntilChanged()
             .filter { (lastVisible, total) ->
-                total > 0 && lastVisible >= total - PREFETCH_THRESHOLD && state.hasMorePages
+                total > 0 && lastVisible >= total - PrefetchThreshold && state.hasMorePages
             }
             .collect { onLoadNextPage() }
     }
@@ -199,6 +198,7 @@ private fun RecipesList(
 }
 
 @LightDarkPreview
+@Suppress("UnusedPrivateMember") // Preview is used by Android Studio; not a runtime caller
 @Composable
 private fun SearchScreenPreview() {
     RecipesTheme {

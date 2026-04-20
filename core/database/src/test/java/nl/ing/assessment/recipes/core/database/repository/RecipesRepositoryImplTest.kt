@@ -133,6 +133,7 @@ class RecipesRepositoryImplTest {
         assertEquals(429, (error as ServerException).code)
     }
 
+    @Suppress("LongMethod")
     @Test
     fun `fetchRecipeDetails persists recipe ingredients and steps`() = runTest {
         val dto = RecipeDetailsDto(

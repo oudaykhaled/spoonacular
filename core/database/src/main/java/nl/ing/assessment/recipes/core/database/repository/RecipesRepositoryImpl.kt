@@ -140,9 +140,11 @@ class RecipesRepositoryImpl @Inject constructor(
      * @param cachedAt epoch millis when the data was cached (from [RecipeEntity.cachedAt])
      * @param ttlMs time-to-live in milliseconds; defaults to 24 hours
      */
+    @Suppress("UnusedPrivateMember") // Intentionally unused — TTL enforcement deferred until UX policy is decided
     private fun isCacheStale(cachedAt: Long, ttlMs: Long = CACHE_TTL_MS): Boolean =
         clock() - cachedAt > ttlMs
 
+    @Suppress("SwallowedException") // HttpException is intentionally re-thrown as domain ServerException
     private suspend fun <T> wrapHttpException(block: suspend () -> T): T =
         try {
             block()

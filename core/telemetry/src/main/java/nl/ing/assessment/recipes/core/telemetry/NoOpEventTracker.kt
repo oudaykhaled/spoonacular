@@ -5,6 +5,6 @@ import javax.inject.Singleton
 
 @Singleton
 class NoOpEventTracker @Inject constructor() : EventTracker {
-    override fun trackScreenView(name: String) {}
-    override fun trackEvent(name: String, params: Map<String, Any?>) {}
+    override fun trackScreenView(name: String) = Unit
+    override fun trackEvent(name: String, params: Map<String, Any?>) = Unit
 }

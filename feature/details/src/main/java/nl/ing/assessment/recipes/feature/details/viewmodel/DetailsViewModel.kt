@@ -86,7 +86,7 @@ class DetailsViewModel @AssistedInject constructor(
             try {
                 val details = getRecipeDetails(recipeId)
                 _state.update { it.copy(details = details, isLoading = false) }
-            } catch (e: Exception) {
+            } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
                 _state.update { it.copy(isLoading = false, error = e.toUiText()) }
             }
         }
@@ -99,7 +99,7 @@ class DetailsViewModel @AssistedInject constructor(
             try {
                 toggleFavoriteUseCase(recipe.id, recipe.isFavorite)
                 _state.update { it.copy(isFavoriteLoading = false) }
-            } catch (e: Exception) {
+            } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
                 _state.update { it.copy(isFavoriteLoading = false) }
                 _sideEffects.send(DetailsSideEffect.ShowSnackbar(e.toUiText()))
             }

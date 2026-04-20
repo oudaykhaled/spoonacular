@@ -65,6 +65,7 @@ style:
       - "**/androidTest/**"
       - "**/*Test.kt"
       - "**/*Spec.kt"
+      - "**/Color.kt"
   ReturnCount:
     active: true
     max: 3

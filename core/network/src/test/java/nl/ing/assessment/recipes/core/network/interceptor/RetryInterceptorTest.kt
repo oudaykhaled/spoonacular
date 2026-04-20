@@ -85,6 +85,7 @@ class RetryInterceptorTest {
 
     @Test(expected = java.io.IOException::class)
     fun `wraps non-IOException as IOException after retries exhausted`() {
+        @Suppress("TooGenericExceptionThrown")
         val throwing = okhttp3.Interceptor { _ -> throw RuntimeException("Unexpected failure") }
 
         val clientWithThrowing = OkHttpClient.Builder()

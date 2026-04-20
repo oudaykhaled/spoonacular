@@ -26,7 +26,7 @@ class RetryInterceptor @Inject constructor() : Interceptor {
                     return@repeat
                 }
                 throw e
-            } catch (e: Exception) {
+            } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
                 val wrapped = IOException("Unexpected error during request", e)
                 lastException = wrapped
                 if (attempt < MAX_RETRIES) {

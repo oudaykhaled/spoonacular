@@ -45,6 +45,7 @@ fun DetailsRoute(
                     }
                 }
                 is DetailsSideEffect.ShowSnackbar -> {
+                    @Suppress("SpreadOperator")
                     val message = when (val msg = effect.message) {
                         is UiText.Raw -> msg.value
                         is UiText.Resource -> resources.getString(msg.resId, *msg.args.toTypedArray())

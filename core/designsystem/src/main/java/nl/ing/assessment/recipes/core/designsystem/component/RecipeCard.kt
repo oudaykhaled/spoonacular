@@ -34,6 +34,7 @@ import nl.ing.assessment.recipes.core.designsystem.theme.spacing
 import nl.ing.assessment.recipes.core.designsystem.util.stripHtmlAndDecodeEntities
 import nl.ing.assessment.recipes.core.domain.model.Recipe
 
+@Suppress("LongMethod") // Composable card with image + title + summary + info pills — extraction would increase noise
 @Composable
 fun RecipeCard(
     recipe: Recipe,

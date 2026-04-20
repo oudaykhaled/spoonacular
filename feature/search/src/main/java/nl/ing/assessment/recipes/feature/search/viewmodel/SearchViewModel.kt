@@ -30,6 +30,7 @@ import nl.ing.assessment.recipes.core.telemetry.EventTracker
 import java.io.IOException
 import javax.inject.Inject
 
+@Suppress("TooManyFunctions") // ViewModel delegates are deliberately verbose; extraction helpers count as functions
 @OptIn(FlowPreview::class)
 @HiltViewModel
 class SearchViewModel @Inject constructor(
@@ -136,7 +137,7 @@ class SearchViewModel @Inject constructor(
                 throw e
             } catch (e: IOException) {
                 handleSearchIoError(e)
-            } catch (e: Exception) {
+            } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
                 _state.update { it.applySearchError(e.toUiText()) }
             }
         }
@@ -220,7 +221,7 @@ class SearchViewModel @Inject constructor(
                 )
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
+            } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
                 _state.update { it.copy(recipes = previous.toImmutableList()) }
                 _sideEffects.send(SearchSideEffect.ShowSnackbar(e.toUiText()))
             } finally {
@@ -250,6 +251,5 @@ class SearchViewModel @Inject constructor(
     private companion object {
         const val SEARCH_DEBOUNCE_MS = 350L
         const val PAGE_SIZE = 20
-        const val PREFETCH_THRESHOLD = 4
     }
 }

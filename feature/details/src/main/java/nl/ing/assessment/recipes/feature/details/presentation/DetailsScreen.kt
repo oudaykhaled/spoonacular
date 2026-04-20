@@ -151,6 +151,7 @@ private fun DetailsContent(
 }
 
 @LightDarkPreview
+@Suppress("UnusedPrivateMember") // Preview is used by Android Studio; not a runtime caller
 @Composable
 private fun DetailsScreenPreview() {
     RecipesTheme {

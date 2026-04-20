@@ -374,3 +374,18 @@ The cached-recipes `Flow` (`observeCachedRecipes`) runs independently of the sea
 - Crash reporting is a `NoOpLogger` / `NoOpEventTracker` in release. A production build would need real implementations wired behind a consent flag.
 - `SPOONACULAR_API_KEY` is injected into `BuildConfig`, which puts the string literal in the APK. This is acceptable for a challenge but is not a secrets boundary.
 - Instrumented tests, macrobenchmarks, and baseline-profile generation all require a physical device or emulator and are not run in CI; they must be invoked manually.
+
+## CI/CD
+
+GitHub Actions runs on every push and pull-request targeting `main`. The workflow is defined in `.github/workflows/ci.yml`.
+
+| Job | Tasks run | Notes |
+| --- | --- | --- |
+| **validate** | Gradle wrapper validation | Ensures the wrapper JAR has not been tampered with. |
+| **lint + detekt** | `lintDevDebug`, Detekt | Static analysis across all modules. |
+| **unit tests + coverage** | `testDevDebugUnitTest`, `jacocoCoverageCheck` | Runs all JVM unit tests and enforces the 50% line-coverage gate. |
+| **build** | `assembleDevDebug`, `assembleProdRelease` | Produces debug APK for `dev` and release APK for `prod`. |
+
+Instrumented tests and benchmarks are **not** run in CI — they require a connected device and must be executed locally.
+
+> **Secret required**: the workflow expects a `SPOONACULAR_API_KEY` GitHub repository secret. Add it under *Settings → Secrets and variables → Actions* before the first run.

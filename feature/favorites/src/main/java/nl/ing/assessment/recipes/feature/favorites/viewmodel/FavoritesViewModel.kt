@@ -83,7 +83,7 @@ class FavoritesViewModel @Inject constructor(
                 toggleFavoriteUseCase(recipe.id, recipe.isFavorite)
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
+            } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
                 _state.update { it.copy(favorites = previous.toImmutableList()) }
                 _sideEffects.send(FavoritesSideEffect.ShowSnackbar(e.toUiText()))
             } finally {

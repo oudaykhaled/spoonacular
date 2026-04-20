@@ -72,7 +72,11 @@ class TimberLoggerTest {
     @Test
     fun `logRecipeAction logs with details`() {
         logger.logRecipeAction("recipe-1", "favorite", mapOf("source" to "list"))
-        assertTrue(logEntries.any { it.tag == "RecipeAction" && it.message.contains("recipe-1") && it.message.contains("favorite") })
+        assertTrue(
+            logEntries.any {
+                it.tag == "RecipeAction" && it.message.contains("recipe-1") && it.message.contains("favorite")
+            }
+        )
     }
 
     @Test
